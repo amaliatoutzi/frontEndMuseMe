@@ -1,0 +1,110 @@
+* { box-sizing: border-box; }
+html, body, #app { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; }
+/* Theme */
+:root {
+  color-scheme: light; /* app is designed for light theme */
+  /* Brand palette (MuseMe blue) */
+  --brand-600: #1D5CAD; /* primary */
+  --brand-700: #194f93; /* hover/darker */
+  --brand-500: #2b6ec3; /* lighter */
+
+  /* Neutral surfaces and text */
+  --bg: #f7f9fc;
+  --surface: #ffffff;
+  --surface-2: #f3f6fb;
+  --surface-3: #eaf0f9;
+  --border: #e5eaf2;
+  --text: #1f2937;
+  --muted: #667085;
+  --link: var(--brand-600);
+  --ring: rgba(29, 92, 173, 0.35);
+
+  /* Layout tokens */
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.04), 0 2px 8px rgba(16, 24, 40, 0.06);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+a { color: var(--link); }
+a:hover { text-decoration: underline; }
+
+button {
+  cursor: pointer;
+}
+
+input, button {
+  font-size: 1rem;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+}
+
+/* Buttons */
+.primary {
+  background: var(--brand-600);
+  color: #fff;
+  border: 1px solid var(--brand-600);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.8rem;
+}
+.primary:hover { background: var(--brand-700); border-color: var(--brand-700); }
+.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.primary:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+
+.ghost, .page-btn, .filter-btn {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.8rem;
+}
+.ghost:hover, .page-btn:hover, .filter-btn:hover { background: var(--surface-3); }
+.ghost:focus-visible, .page-btn:focus-visible, .filter-btn:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+
+/* Icon links, bookmark buttons */
+.icon-link {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: inherit; text-decoration: none;
+}
+.icon-link:hover { background: var(--surface-3); text-decoration: none; }
+.bookmark-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: var(--radius-sm);
+  border: none; background: transparent; color: #444;
+}
+.bookmark-btn:hover { background: var(--surface-2); }
+.bookmark-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Tags */
+.tag { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; }
+
+/* Modals */
+.modal-overlay { backdrop-filter: blur(2px); }
+.modal { border-color: var(--border); border-radius: var(--radius); box-shadow: var(--shadow-1); }
+.modal-header { border-bottom: 1px solid var(--border); }
+.modal-body { background: var(--surface); }
+
+/* App header tweaks */
+.app-header { background: var(--surface); border-bottom: 1px solid var(--border); }
+.nav a.nav-link { color: var(--text); text-decoration: none; }
+.nav a.nav-link:hover { color: var(--brand-600); }
+.logo-title { color: var(--brand-600); }
