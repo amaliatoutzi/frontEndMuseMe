@@ -140,6 +140,13 @@ The frontend calls these endpoints via the Vite proxy (see `vite.config.ts`). Re
 ## Project structure (high level)
 
 ```
+user-journey.md     # User journey narrative (end-to-end story)
+catalog/            # Dataset(s) for museums/exhibits
+	new-york-museums.json
+media/              # App media assets
+	banner.png
+	logo.png
+screen_recording.mp4 # Demo screen recording of the app
 src/
 	pages/            # Route-level pages: Spotlight, Browse, Feed, Profile, Showcase, Auth
 	components/       # UI components (cards, auth forms, profile panels, star rating, etc.)
@@ -150,33 +157,9 @@ src/
 	utils/            # Catalog helpers
 ```
 
-## Accessibility & UX
-
-- Modals close on overlay click or Escape
-- Active nav item has color + subtle background/underline
-- Buttons have focus-visible rings via CSS variables
-- Swipeable galleries use native scroll with snap
-
-## Troubleshooting
-
-- 500 errors from Axios
-	- Check backend logs; the frontend logs the failing method, URL, status, and a masked request payload in dev tools
-	- Confirm the backend is running at `:8000` and Vite proxy is active
-	- Verify expected response shapes per endpoint notes above
-
-- CORS issues
-	- Use the dev proxy (already configured). Do not call the backend directly from the browser origin during dev.
-
-- Images not showing
-	- Ensure `pictureUrl` in the catalog points to a reachable URL or a bundled asset
-
 ## Scripts
 
 - `npm run dev` — start the dev server
 - `npm run build` — type-check and build for production
 - `npm run preview` — preview the production build locally
 - `npm run type-check` — run Vue TypeScript checks
-
-## License
-
-Proprietary — all rights reserved by the project owner. Replace this section with your preferred license if you plan to open source.
