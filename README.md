@@ -174,7 +174,7 @@ The frontend calls these endpoints via the Vite proxy (see `vite.config.ts`). Re
 
 ```
 user-journey.md     # User journey narrative (original)
-user-journey-updated # Updated user journey narrative (latest)
+updated_user_journey.md # Updated user journey narrative (latest)
 catalog/            # Dataset(s) for museums/exhibits
 	new-york-museums.json
 media/              # App media assets
@@ -201,7 +201,7 @@ src/
 
 ## Updated user journey
 
-- Latest narrative: [user-journey-updated](user-journey-updated)
+- Latest narrative: [updated_user_journey.md](updated_user_journey.md)
 - Original version: [user-journey.md](user-journey.md)
 
 ## Scripts
