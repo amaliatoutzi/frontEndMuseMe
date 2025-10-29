@@ -15,21 +15,22 @@ This repository is the Vue 3 + Vite frontend. It talks to a backend (proxied at 
 ## Features
 
 - Spotlight recommendations
-	- “For you” shows 6 recommended museums based on your highly rated places and preferences
+	- “For you” shows recommended museums based on your highly rated places and preferences, with “Because you liked…” context
 	- One-click Refresh for a new slice of the ranked pool
 	- Photo header, quick actions (Directions, Save)
-	- Elegant gold divider under the title sized to the heading
+	- Tap a museum to open a quick details modal (Website, Directions, Save/Unsave)
 
-- Browse directory
+- Browse directory through search bar
 	- Fast search by name/address/tags
 	- Filters modal (Borough, Tag)
+	- List ↔ Map view toggle; interactive map with brand-styled markers
+	- Gold selection halo when a marker is selected; tap to open the museum details modal
 	- Media header if a `pictureUrl` exists in the catalog
 
 - Friends Feed (social proof)
 	- Swipeable photo gallery per visit (native horizontal scroll)
 	- Exhibits visited, per-exhibit notes, and star ratings
 	- Tap museum name to open a modal with its card and Save/Unsave
-	- Gold divider under the page title; consistent icon links
 
 - Visits (Showcase)
 	- Recent visits list with chevron toggles; date-only timestamps
@@ -42,11 +43,17 @@ This repository is the Vue 3 + Vite frontend. It talks to a backend (proxied at 
 	- Following: searchable Followers/Following, mutual pill (blue), explicit Unfollow
 	- Preferences: clickable tags; chips turn brand blue on hover
 	- Saved: bookmark action, compact cards with tags
-	- Profile hero has a tasteful inset gold outline
+	- User can edit or remove their profile picture
 
 - Auth
-	- Login / Register forms with brand-blue hover buttons
-	- Post-auth redirect to Spotlight
+	- Login / Register forms
+	- Post-auth redirect to main page
+	- Ability to add name and profile picture
+
+
+- Navigation & utilities
+	- Floating Map button to open a full-screen map view from anywhere
+	- Scroll-to-top button appears on long pages for easy navigation
 
 - Design system
 	- Brand palette moved to deep burgundy for primary text/links, with gold accents and teal for curated stats
