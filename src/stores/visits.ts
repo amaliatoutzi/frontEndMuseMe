@@ -71,13 +71,13 @@ export const useVisitsStore = defineStore('visits', {
       await this.syncVisits(userId);
       return id;
     },
-    async addEntry(visitId: string, exhibit: string, userId: UserId, note?: string, photoUrl?: string) {
+    async addEntry(visitId: string, exhibit: string, userId: UserId, note?: string, photoUrls?: string[], rating?: number) {
       // optimistic: add a placeholder entry id? We'll just sync after API.
-      await apiAddEntry(visitId, exhibit, userId, note, photoUrl);
+      await apiAddEntry(visitId, exhibit, userId, note, photoUrls, rating);
       await this.syncEntries(visitId);
     },
-    async editEntry(visitEntryId: string, visitId: string, userId: UserId, note?: string, photoUrl?: string) {
-      await apiEditEntry(visitEntryId, userId, note, photoUrl);
+    async editEntry(visitEntryId: string, visitId: string, userId: UserId, note?: string, photoUrls?: string[], rating?: number) {
+      await apiEditEntry(visitEntryId, userId, note, photoUrls, rating);
       await this.syncEntries(visitId);
     },
     async removeEntry(visitEntryId: string, visitId: string, userId: UserId) {

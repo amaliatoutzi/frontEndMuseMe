@@ -1,16 +1,16 @@
 <template>
   <form class="form" @submit.prevent="onSubmit">
-    <label>
-      Username
+    <label class="field">
+      <span class="label">Username</span>
       <input v-model.trim="username" autocomplete="username" required />
     </label>
-    <label>
-      Password
+    <label class="field">
+      <span class="label">Password</span>
       <input v-model.trim="password" type="password" autocomplete="current-password" required />
     </label>
 
     <div class="actions">
-      <button type="submit" :disabled="loading">{{ loading ? 'Logging in…' : 'Login' }}</button>
+      <button type="submit" class="primary" :disabled="loading">{{ loading ? 'Logging in…' : 'Login' }}</button>
     </div>
 
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
@@ -49,12 +49,13 @@ const emit = defineEmits<{ (e: 'authed'): void }>();
 </script>
 
 <style scoped>
-.form { display: grid; gap: 0.75rem; max-width: 360px; }
-label { display: grid; gap: 0.25rem; }
-input { padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; }
-.actions { margin-top: 0.5rem; }
-.actions button { padding: 0.45rem 0.8rem; border: 1px solid var(--border); background: #fafafa; border-radius: 8px; transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease; }
-.actions button:hover { background: var(--brand-600); color: #fff; border-color: var(--brand-600); }
+.form { display: grid; gap: 0.85rem; max-width: 420px; }
+.field { display: grid; gap: 0.35rem; }
+.label { font-weight: 600; font-size: 0.95rem; }
+input { padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+input:focus-visible { outline: 3px solid var(--ring); outline-offset: 1px; }
+.actions { margin-top: 0.25rem; }
+.actions .primary { border-radius: 10px; }
 .actions button:disabled { opacity: 0.6; cursor: not-allowed; }
 .error {
   color: #b00020;

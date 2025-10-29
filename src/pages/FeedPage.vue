@@ -1,20 +1,21 @@
 <template>
   <section class="feed-page">
     <header class="page-header">
-      <h2>Friends feed</h2>
+      <h2 id="feed-title">Friends feed</h2>
     </header>
+    <GoldDivider class="divider-tight" :height="32" :stroke="18" :ornament-stroke="16" match-to="#feed-title" />
 
-    <div v-if="!userId" class="status">Login to see your feed.</div>
+    <div v-if="!userId" class="banner info">Login to see your feed.</div>
     <div v-else>
       <div v-if="loading" class="status">Loading…</div>
-      <div v-else-if="error" class="error">{{ error }}</div>
-      <div v-else-if="items.length === 0" class="status">No recent activity from mutuals yet.</div>
+      <p v-else-if="error" class="banner info">{{ error }}</p>
+      <p v-else-if="items.length === 0" class="banner empty">No recent activity from mutuals yet.</p>
 
       <ul v-else class="list">
         <li v-for="it in items" :key="it._key" class="row">
           <div class="row-main">
             <div class="who">
-              <span class="avatar" aria-hidden="true">{{ it.initial }}</span>
+              <Avatar :first-name="it.firstName" :last-name="it.lastName" :username="it.username || it.owner" :url="it.avatarUrl || null" :size="28" />
               <strong class="username">{{ it.username || it.owner }}</strong>
             </div>
             <div class="activity">
@@ -23,13 +24,35 @@
           </div>
           <div class="row-right">
             <time :datetime="it.createdAt">{{ formatDate(it.createdAt) }}</time>
-            <a class="dir icon-link" :href="it.mapsUrl" target="_blank" rel="noopener" aria-label="Directions" title="Directions">📍</a>
+            <a class="dir icon-link" :href="it.mapsUrl" target="_blank" rel="noopener" aria-label="Directions" title="Directions">
+              <Icon name="map-pin" :size="18" :stroke="2" />
+            </a>
           </div>
           <div v-if="it.photos?.length" class="row-gallery">
-            <div class="gallery" aria-label="Visit photos" tabindex="0">
-              <div v-for="(p, idx) in it.photos" :key="idx" class="photo">
-                <img :src="p" alt="Visit photo" loading="lazy" />
+            <div class="gallery-wrap">
+              <button v-if="needsCarousel(it.photos)" class="nav prev" @click="prev(it._key, it.photos.length)" aria-label="Previous photo">‹</button>
+              <div
+                :class="['gallery', needsCarousel(it.photos) ? 'smooth-scroll' : 'static']"
+                aria-label="Visit photos"
+                tabindex="0"
+                :ref="setGalleryRef(it._key)"
+                @scroll.passive="onGalleryScroll(it._key)"
+              >
+                <div v-for="(p, idx) in it.photos" :key="idx" class="photo">
+                  <img :src="p" alt="Visit photo" loading="lazy" class="fade-in-img" @load="onImgLoad" @click="openLightbox(it.photos, idx)" />
+                </div>
               </div>
+              <button v-if="needsCarousel(it.photos)" class="nav next" @click="next(it._key, it.photos.length)" aria-label="Next photo">›</button>
+            </div>
+            <div v-if="needsCarousel(it.photos)" class="dots" role="tablist" aria-label="Photo pagination">
+              <button
+                v-for="(p, i) in it.photos"
+                :key="i"
+                class="dot"
+                :class="{ active: currentIndex(it._key) === i }"
+                :aria-selected="currentIndex(it._key) === i ? 'true' : 'false'"
+                @click="goTo(it._key, i)"
+              />
             </div>
           </div>
           <div v-if="it.exhibits?.length" class="row-exhibits">
@@ -49,12 +72,15 @@
       </ul>
 
       <!-- Museum modal -->
-      <div v-if="selectedMuseumId" class="modal-overlay" role="dialog" aria-modal="true" @click.self="closeModal">
-        <div class="modal">
-          <header class="modal-header">
+      <Transition name="overlay-fade">
+        <div v-if="selectedMuseumId" class="modal-overlay" role="dialog" aria-modal="true" @click.self="closeModal">
+          <Transition name="modal-pop">
+            <div class="modal">
+              <header class="modal-header">
             <div class="modal-actions">
               <button
                 class="bookmark-btn"
+                :class="{ bookmarked: selectedMuseumId && isSaved(selectedMuseumId) }"
                 :disabled="!userId"
                 @click="selectedMuseumId && toggleSave(selectedMuseumId)"
                 :aria-pressed="selectedMuseumId && isSaved(selectedMuseumId) ? 'true' : 'false'"
@@ -75,18 +101,37 @@
               </button>
               <button class="close" @click="closeModal" aria-label="Close">✕</button>
             </div>
-          </header>
-          <div class="modal-body">
-            <MuseumCard v-if="selectedMuseumId" :museumId="selectedMuseumId" />
-          </div>
+              </header>
+              <div class="modal-body">
+                <MuseumCard v-if="selectedMuseumId" :museumId="selectedMuseumId" />
+              </div>
+            </div>
+          </Transition>
         </div>
-      </div>
+      </Transition>
+
+      <!-- Photo lightbox -->
+      <Transition name="overlay-fade">
+        <div
+          v-if="lightbox"
+          class="lb-overlay"
+          role="dialog"
+          aria-label="Photo viewer"
+          aria-modal="true"
+          @click.self="closeLightbox"
+        >
+          <button v-if="lightbox.photos.length > 1" class="lb-nav prev" @click="lbPrev" aria-label="Previous photo">‹</button>
+          <img :src="lightbox.photos[lightbox.index]" alt="Expanded visit photo" class="lb-img" />
+          <button v-if="lightbox.photos.length > 1" class="lb-nav next" @click="lbNext" aria-label="Next photo">›</button>
+          <button class="lb-close" @click="closeLightbox" aria-label="Close">✕</button>
+        </div>
+      </Transition>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, reactive, computed, type ComponentPublicInstance } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../stores/auth';
 import { getFollowers, getFollowees } from '../api/following';
@@ -96,6 +141,10 @@ import { getReviewsByUser, type ReviewDTO } from '../api/reviewing';
 import { getMuseumById, itemName, exhibitName } from '../utils/catalog';
 import { useSavingStore } from '../stores/saving';
 import MuseumCard from '../components/MuseumCard.vue';
+import Avatar from '../components/profile/Avatar.vue';
+import { getProfile, type Profile } from '../api/profile';
+import Icon from '../components/ui/Icon.vue';
+import GoldDivider from '../components/ui/GoldDivider.vue';
 
 const auth = useAuthStore();
 const { currentUserId: userId } = storeToRefs(auth);
@@ -107,7 +156,9 @@ const items = ref<Array<{
   _key: string;
   owner: string;
   username: string | null;
-  initial: string;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
   museumId: string;
   museumName: string;
   createdAt: string;
@@ -130,6 +181,12 @@ function closeModal() {
 }
 function onEsc(e: KeyboardEvent) {
   if (e.key === 'Escape') closeModal();
+}
+
+function onImgLoad(e: Event) {
+  const img = e.target as HTMLImageElement;
+  if (!img) return;
+  img.classList.add('is-loaded');
 }
 
 function isSaved(itemId: string): boolean {
@@ -211,6 +268,19 @@ onMounted(async () => {
       })
     );
 
+    // 4b) Fetch profiles for avatar and names
+    const profileById = new Map<string, Profile | null>();
+    await Promise.all(
+      mutuals.map(async (uid) => {
+        try {
+          const p = await getProfile(uid);
+          profileById.set(uid, p);
+        } catch {
+          profileById.set(uid, null);
+        }
+      })
+    );
+
     // 5) Load entries for each visit (photos, exhibits, notes)
     const entryLists = await Promise.all(
       flat.map(async ({ visit }) => {
@@ -227,8 +297,20 @@ onMounted(async () => {
     const entryNotesByVisit = new Map<string, string[]>();
     for (const { visitId, entries } of entryLists) {
       const list = (entries || []) as VisitEntry[];
-      const urls = list.map((e) => e.photoUrl).filter((u): u is string => !!u);
-      photosByVisit.set(visitId, urls);
+      const urls: string[] = [];
+      const push = (v: any) => { if (typeof v === 'string' && v.trim()) urls.push(v.trim()); };
+      for (const e of list) {
+        if (e?.photoUrl) push(e.photoUrl);
+        if (Array.isArray(e?.photoUrls)) e.photoUrls.forEach(push);
+        if ((e as any)?.photos) {
+          const arr = (e as any).photos;
+          if (Array.isArray(arr)) arr.forEach(push);
+        }
+        if ((e as any)?.photo) push((e as any).photo);
+      }
+  // dedupe, keep order
+  const deduped = Array.from(new Set(urls));
+  photosByVisit.set(visitId, deduped);
       const exIds = Array.from(new Set(list.map((e) => e.exhibit).filter(Boolean)));
       const museumId = flat.find((f) => f.visit._id === visitId)?.visit.museum || '';
       const exNames = exIds.map((exId) => exhibitName(museumId, exId));
@@ -258,7 +340,8 @@ onMounted(async () => {
       .map(({ owner, visit }) => {
         const museumName = itemName(visit.museum);
         const username = usernameById.get(owner) ?? null;
-        const photos = photosByVisit.get(visit._id) || [];
+        const prof = profileById.get(owner) || null;
+  const photos = photosByVisit.get(visit._id) || [];
         const exhibitsAll = exhibitsByVisit.get(visit._id) || [];
         const exhibits = exhibitsAll.slice(0, 6);
         const exhibitsMoreCount = Math.max(0, exhibitsAll.length - exhibits.length);
@@ -269,7 +352,9 @@ onMounted(async () => {
           _key: `${owner}:${visit._id}`,
           owner,
           username,
-          initial: (username?.[0] || owner?.[0] || '?').toUpperCase(),
+          firstName: prof?.firstName || null,
+          lastName: prof?.lastName || null,
+          avatarUrl: prof?.profilePictureUrl || null,
           museumId: visit.museum,
           museumName,
           createdAt: visit.createdAt,
@@ -291,30 +376,114 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+// Simple carousel state and helpers per row
+const galleries = reactive<Record<string, HTMLElement | null>>({});
+const indices = reactive<Record<string, number>>({});
+function setGalleryRef(key: string) {
+  return (el: Element | ComponentPublicInstance | null) => {
+    galleries[key] = (el as unknown as HTMLElement) || null;
+  };
+}
+function currentIndex(key: string): number { return indices[key] ?? 0; }
+function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)); }
+function goTo(key: string, idx: number) {
+  const el = galleries[key]; if (!el) return;
+  const i = clamp(idx, 0, el.children.length - 1);
+  const child = el.children[i] as HTMLElement | undefined;
+  if (child) el.scrollTo({ left: child.offsetLeft, behavior: 'smooth' });
+  indices[key] = i;
+}
+function step(key: string, total: number, dir: number) {
+  const next = clamp(currentIndex(key) + dir, 0, Math.max(0, total - 1));
+  goTo(key, next);
+}
+function prev(key: string, total: number) { step(key, total, -1); }
+function next(key: string, total: number) { step(key, total, +1); }
+let rafId: number | null = null;
+function onGalleryScroll(key: string) {
+  if (rafId != null && typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(() => {
+    const el = galleries[key]; if (!el || el.classList.contains('static')) return;
+    const children = Array.from(el.children) as HTMLElement[];
+    if (!children.length) return;
+    // Find the child whose left edge is closest to scrollLeft
+    const sl = el.scrollLeft;
+    let bestI = 0; let bestD = Infinity;
+    children.forEach((c, i) => {
+      const d = Math.abs(c.offsetLeft - sl);
+      if (d < bestD) { bestD = d; bestI = i; }
+    });
+    indices[key] = bestI;
+  });
+}
+
+// Only enable carousel behavior if there are more than 3 photos
+function needsCarousel(photos: string[] | null | undefined): boolean {
+  return Array.isArray(photos) && photos.length > 3;
+}
+
+// -------- Lightbox state and actions --------
+const lightbox = ref<{ photos: string[]; index: number } | null>(null);
+function openLightbox(photos: string[], index: number) {
+  if (!Array.isArray(photos) || photos.length === 0) return;
+  lightbox.value = { photos, index: Math.max(0, Math.min(index, photos.length - 1)) };
+  document.addEventListener('keydown', onLightboxEsc, { passive: true });
+}
+function closeLightbox() {
+  lightbox.value = null;
+  document.removeEventListener('keydown', onLightboxEsc as any);
+}
+function onLightboxEsc(e: KeyboardEvent) {
+  if (e.key === 'Escape') closeLightbox();
+  else if (e.key === 'ArrowRight') lbNext();
+  else if (e.key === 'ArrowLeft') lbPrev();
+}
+function lbNext() {
+  if (!lightbox.value) return;
+  const { photos, index } = lightbox.value;
+  lightbox.value = { photos, index: Math.min(index + 1, photos.length - 1) };
+}
+function lbPrev() {
+  if (!lightbox.value) return;
+  const { photos, index } = lightbox.value;
+  lightbox.value = { photos, index: Math.max(index - 1, 0) };
+}
 </script>
 
 <style scoped>
 .feed-page { max-width: 960px; margin: 0 auto; padding: 0 1rem; }
-.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
-.status { color: #666; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.15rem; }
+.page-header h2 { margin: 0; }
+.status { color: var(--muted); }
 .error { color: #b91c1c; }
 .list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
-.row { border: 1px solid #eee; border-radius: 10px; background: #fff; padding: 0.6rem 0.75rem; display: grid; grid-template-columns: 1fr auto; align-items: center; }
+.row { border: 1px solid var(--border); border-radius: 10px; background: #fff; padding: 0.6rem 0.75rem; display: grid; grid-template-columns: 1fr auto; align-items: center; }
 .row-main { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .who { display: inline-flex; align-items: center; gap: 0.4rem; }
 .avatar { width: 28px; height: 28px; border-radius: 999px; background: #111827; color: #fff; display: grid; place-items: center; font-size: 0.9rem; }
 .username { font-weight: 600; }
 .activity { color: #374151; }
 .museum { font-weight: 600; }
-.row-right { display: inline-flex; align-items: center; gap: 0.5rem; color: #6b7280; }
-.icon-link { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: #f3f4f6; text-decoration: none; }
-.icon-link:hover { background: #e5e7eb; text-decoration: none; }
+.row-right { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--muted); }
+/* Use global .icon-link styles for consistent hover contrast */
+.divider-tight { margin-top: -0.3rem; margin-bottom: 0.15rem; }
 
 /* Horizontal photo gallery with scroll-snap for natural swiping */
 .row-gallery { grid-column: 1 / -1; margin-top: 0.5rem; }
+.gallery-wrap { position: relative; }
 .gallery { display: flex; gap: 0.5rem; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding-bottom: 0.25rem; }
+.gallery.static { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; overflow: visible; scroll-snap-type: none; }
 .photo { flex: 0 0 220px; height: 140px; border-radius: 10px; overflow: hidden; background: #f3f4f6; scroll-snap-align: start; }
+.gallery.static .photo { flex: initial; width: 100%; }
 .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo img { cursor: zoom-in; }
+.nav { position: absolute; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; border-radius: 999px; border: none; background: rgba(0,0,0,0.5); color: #fff; display: grid; place-items: center; cursor: pointer; z-index: 2; }
+.nav.prev { left: 6px; }
+.nav.next { right: 6px; }
+.dots { display: flex; gap: 6px; justify-content: center; margin-top: 6px; }
+.dot { width: 6px; height: 6px; border-radius: 999px; background: #d1d5db; border: none; }
+.dot.active { background: #111827; }
 
 /* Exhibits chips and review */
 .row-exhibits { grid-column: 1 / -1; margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
@@ -333,8 +502,20 @@ onMounted(async () => {
 .modal-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.25rem; }
 .modal-body { padding: 0 0.75rem 0.75rem; }
 .close { background: transparent; border: none; font-size: 1.1rem; cursor: pointer; }
-.linklike { background: transparent; border: none; padding: 0; margin: 0; color: #0b72ef; cursor: pointer; text-decoration: underline; font: inherit; }
-.bookmark-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: none; background: transparent; color: #444; border-radius: 6px; }
+.close:hover { color: var(--accent-gold); }
+.linklike { background: transparent; border: none; padding: 0; margin: 0; color: var(--brand-600); cursor: pointer; text-decoration: underline; font: inherit; }
+.linklike:hover { color: var(--brand-700); }
+.bookmark-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: none; background: transparent; color: var(--brand-600); border-radius: 6px; }
 .bookmark-btn:hover { background: #f1f1f1; }
 .bookmark-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Lightbox */
+.lb-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: grid; place-items: center; z-index: 70; }
+.lb-img { max-width: 90vw; max-height: 85vh; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
+.lb-close { position: fixed; top: 14px; right: 16px; background: transparent; border: none; color: #fff; font-size: 1.4rem; cursor: pointer; }
+.lb-close:hover { color: var(--accent-gold); }
+.lb-nav { position: fixed; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 999px; border: none; background: rgba(0,0,0,0.5); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.lb-nav.prev { left: 16px; }
+.lb-nav.next { right: 16px; }
+.lb-nav:hover { background: rgba(0,0,0,0.65); }
 </style>

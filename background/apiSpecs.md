@@ -980,7 +980,8 @@ Note on identifiers
   "visit": "string",
   "exhibit": "string",
   "note?": "string",
-  "photoUrl?": "string",
+  "photoUrls?": ["string"],
+  "rating?": "number",
   "user": "string"
 }
 ```
@@ -1008,7 +1009,7 @@ Note on identifiers
 - The `user` performing the action must be the `owner` of the associated visit.
 
 **Effects:**
-- Updates the provided fields (`note`, `photoUrl`) of the `VisitEntries[visitEntryId]`.
+- Updates the provided fields (`note`, `photoUrls`, `rating`) of the `VisitEntries[visitEntryId]`.
 - Sets `VisitEntries[visitEntryId].updatedAt := now`.
 - Sets `Visits[entry.visit].updatedAt := now`.
 
@@ -1017,7 +1018,8 @@ Note on identifiers
 {
   "visitEntryId": "string",
   "note?": "string",
-  "photoUrl?": "string",
+  "photoUrls?": ["string"],
+  "rating?": "number",
   "user": "string"
 }
 ```
@@ -1179,8 +1181,9 @@ Note on identifiers
       "_id": "string",
       "visit": "string",
       "exhibit": "string",
-      "note?": "string",
-      "photoUrl?": "string",
+  "note?": "string",
+  "photoUrls?": ["string"],
+      "rating?": "number",
       "loggedAt": "string",
       "updatedAt": "string"
     }
@@ -1222,9 +1225,194 @@ Note on identifiers
       "_id": "string",
       "visit": "string",
       "exhibit": "string",
-      "note?": "string",
-      "photoUrl?": "string",
+  "note?": "string",
+  "photoUrls?": ["string"],
+      "rating?": "number",
       "loggedAt": "string",
+      "updatedAt": "string"
+    }
+  }
+]
+```
+
+**Error Response Body:**
+```json
+{
+  "error": "string"
+}
+```
+
+---
+
+
+
+# API Specification: Profile Concept
+
+**Purpose:** store minimal user profile details: immutable first/last name (added once) and an optional profile picture URL that can be added/edited/removed.
+
+---
+
+## API Endpoints
+
+### POST /api/Profile/addName
+
+**Description:** Adds first and last name for a user. Names are immutable once set.
+
+**Requirements:**
+- `user` must exist.
+- No name must have been previously set for this user.
+
+**Effects:**
+- If no Profile exists, creates one. Sets `firstName` and `lastName`. Updates timestamps.
+
+**Request Body:**
+```json
+{
+  "user": "string",
+  "firstName": "string",
+  "lastName": "string"
+}
+```
+
+**Success Response Body (Action):**
+```json
+{}
+```
+
+**Error Response Body:**
+```json
+{
+  "error": "string"
+}
+```
+
+---
+
+### POST /api/Profile/addProfilePicture
+
+**Description:** Adds a profile picture URL for a user.
+
+**Requirements:**
+- `user` must exist.
+- No profile picture must currently be set.
+
+**Effects:**
+- If no Profile exists, creates one. Sets `profilePictureUrl := url`. Updates timestamps.
+
+**Request Body:**
+```json
+{
+  "user": "string",
+  "url": "string"
+}
+```
+
+**Success Response Body (Action):**
+```json
+{}
+```
+
+**Error Response Body:**
+```json
+{
+  "error": "string"
+}
+```
+
+---
+
+### POST /api/Profile/editProfilePicture
+
+**Description:** Replaces the existing profile picture URL for a user.
+
+**Requirements:**
+- `user` must exist.
+- A profile picture must already be set.
+
+**Effects:**
+- Sets `profilePictureUrl := url`. Updates `updatedAt := now`.
+
+**Request Body:**
+```json
+{
+  "user": "string",
+  "url": "string"
+}
+```
+
+**Success Response Body (Action):**
+```json
+{}
+```
+
+**Error Response Body:**
+```json
+{
+  "error": "string"
+}
+```
+
+---
+
+### POST /api/Profile/removeProfilePicture
+
+**Description:** Removes the existing profile picture URL for a user.
+
+**Requirements:**
+- `user` must exist.
+- A profile picture must already be set.
+
+**Effects:**
+- Unsets `profilePictureUrl`. Updates `updatedAt := now`.
+
+**Request Body:**
+```json
+{
+  "user": "string"
+}
+```
+
+**Success Response Body (Action):**
+```json
+{}
+```
+
+**Error Response Body:**
+```json
+{
+  "error": "string"
+}
+```
+
+---
+
+### POST /api/Profile/_getProfile
+
+**Description:** Returns the profile for a user, if any.
+
+**Requirements:**
+- None explicit, but `user` should be a valid `User` ID.
+
+**Effects:**
+- Returns an array containing the Profile if it exists, otherwise an empty array.
+
+**Request Body:**
+```json
+{
+  "user": "string"
+}
+```
+
+**Success Response Body (Query):**
+```json
+[
+  {
+    "profile": {
+      "_id": "string",
+      "firstName?": "string",
+      "lastName?": "string",
+      "profilePictureUrl?": "string",
+      "createdAt": "string",
       "updatedAt": "string"
     }
   }

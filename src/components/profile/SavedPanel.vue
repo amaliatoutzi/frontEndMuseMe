@@ -50,9 +50,11 @@
             </button>
           </div>
         </div>
-        <div v-if="expanded[id]" class="card-wrap">
-          <MuseumCard :museum-id="id" />
-        </div>
+        <Transition name="fade-slide">
+          <div v-if="expanded[id]" class="card-wrap">
+            <MuseumCard :museum-id="id" />
+          </div>
+        </Transition>
       </li>
     </ul>
   </div>
@@ -119,7 +121,7 @@ onMounted(() => { if (props.userId) refresh(); });
   border: none; background: transparent; color: inherit;
 }
 .chevron-btn:hover { background: var(--surface-2); }
-.chevron { transition: transform 160ms ease; }
+.chevron { transition: transform var(--dur-quick) var(--ease-standard); }
 .chevron.rotated { transform: rotate(180deg); }
 .card-wrap { margin-top: 0.5rem; }
 /* Using global .bookmark-btn for Unsave icon */

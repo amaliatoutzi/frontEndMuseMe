@@ -1,14 +1,15 @@
 <template>
   <section class="spotlight-page container">
     <header class="page-header">
-      <h2>Spotlight</h2>
+      <h2 id="spotlight-title">Spotlight</h2>
     </header>
+  <GoldDivider class="divider-tight" :height="32" :stroke="18" :ornament-stroke="16" match-to="#spotlight-title" />
 
     <!-- Personalized recommendations based on your highly rated museums -->
     <section class="personal">
       <header class="subheader">
-        <h3>For you</h3>
-        <button class="primary" :disabled="recLoading || !canRefresh" @click="refreshFive">Refresh</button>
+  <h3>For you</h3>
+  <button class="primary" :disabled="recLoading || !canRefresh" @click="refreshFive">Refresh</button>
       </header>
       <p v-if="!isAuthed" class="muted">Sign in to see personalized similar museums based on your ratings.</p>
       <p v-if="recError" class="error">{{ recError }}</p>
@@ -17,15 +18,28 @@
         <span v-for="s in seeds" :key="s" class="seed">{{ s }}</span>
       </div>
       <ul v-if="isAuthed && recommendations.length" class="grid">
-        <li v-for="id in recommendations" :key="id" class="card">
+        <li v-for="id in recommendations" :key="id" class="card" @click="openMuseum(id)">
           <div v-if="museumOf(id)?.pictureUrl" class="media">
             <img :src="museumOf(id)?.pictureUrl" :alt="nameOf(id) + ' photo'" loading="lazy" />
           </div>
-          <div v-else class="thumb" aria-hidden="true">🏛️</div>
+          <div v-else class="thumb" aria-hidden="true"><Icon name="museum" :size="24" :stroke="1.6" /></div>
           <div class="header-row">
             <div class="title">{{ nameOf(id) }}</div>
-            <div class="actions">
-              <a class="link icon-link" :href="mapsUrlById(id)" target="_blank" rel="noopener" aria-label="Directions" title="Directions">📍</a>
+            <div class="actions" @click.stop>
+              <a class="icon-link" :href="mapsUrlById(id)" target="_blank" rel="noopener" aria-label="Directions" title="Directions">
+                <Icon name="map-pin" :size="18" />
+              </a>
+              <a
+                v-if="museumOf(id)?.website"
+                class="icon-link"
+                :href="museumOf(id)?.website"
+                target="_blank"
+                rel="noopener"
+                aria-label="Website"
+                title="Website"
+              >
+                <Icon name="globe" :size="18" />
+              </a>
               <button
                 class="bookmark-btn"
                 :disabled="!isAuthed"
@@ -34,17 +48,7 @@
                 :title="!isAuthed ? 'Login to save' : (isSaved(id) ? 'Unsave' : 'Save')"
                 aria-label="Bookmark"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
-                  :fill="isSaved(id) ? 'currentColor' : 'none'"
-                  :stroke="isSaved(id) ? 'none' : 'currentColor'"
-                  stroke-width="2"
-                  aria-hidden="true"
-                >
-                  <path d="M6 2h12a2 2 0 0 1 2 2v16l-8-4-8 4V4a2 2 0 0 1 2-2z" />
-                </svg>
+                <Icon name="bookmark" :size="20" :stroke="2" />
               </button>
             </div>
           </div>
@@ -52,15 +56,14 @@
           <div class="tags" v-if="museumOf(id)?.tags?.length">
             <span v-for="t in museumOf(id)?.tags || []" :key="t" class="tag">{{ formatTag(t) }}</span>
           </div>
-          <div class="row">
-            <a v-if="museumOf(id)?.website" class="link" :href="museumOf(id)?.website" target="_blank" rel="noopener">Website</a>
-          </div>
+          <!-- website link moved to actions as an icon -->
         </li>
       </ul>
       <p v-else-if="isAuthed && triedPersonalized && !recommendations.length" class="muted">No recommendations yet. Rate a few museums highly, then try again.</p>
     </section>
 
     <!-- Manual controls removed per request; spotlight is now fully personalized -->
+    <MuseumDetailsModal v-model="showDetails" :museum-id="selectedMuseumId" />
   </section>
 </template>
 
@@ -73,6 +76,10 @@ import { useAuthStore } from '../stores/auth';
 import { storeToRefs } from 'pinia';
 import { usePreferencesStore } from '../stores/preferences';
 import { useSavingStore } from '../stores/saving';
+import Icon from '../components/ui/Icon.vue';
+import { useToastStore } from '../stores/toast';
+import MuseumDetailsModal from '../components/MuseumDetailsModal.vue';
+import GoldDivider from '../components/ui/GoldDivider.vue';
 
 const museums = allMuseums;
 
@@ -95,6 +102,7 @@ const canRefresh = ref(false);
 
 // Saving (bookmark) integration
 const saving = useSavingStore();
+const toast = useToastStore();
 function isSaved(id: string): boolean {
   return currentUserId.value ? saving.isSaved(currentUserId.value, id) : false;
 }
@@ -103,11 +111,13 @@ async function toggleSave(id: string) {
   try {
     if (saving.isSaved(currentUserId.value, id)) {
       await saving.unsave(currentUserId.value, id);
+      toast.info('Removed from Saved');
     } else {
       await saving.save(currentUserId.value, id);
+      toast.success('Saved to bookmarks');
     }
   } catch (e: any) {
-    alert(e?.message || 'Failed to update saved state');
+    toast.error(e?.message || 'Failed to update saved state');
   }
 }
 
@@ -255,13 +265,18 @@ onMounted(async () => {
     await loadPersonalized();
   }
 });
+
+const showDetails = ref(false);
+const selectedMuseumId = ref<string | null>(null);
+function openMuseum(id: string) { selectedMuseumId.value = id; showDetails.value = true; }
 </script>
 
 <style scoped>
 .container { max-width: 960px; margin: 0 auto; }
-.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.15rem; }
+.page-header h2 { margin: 0; }
 .primary { background: var(--brand-600); border: 1px solid var(--brand-600); color: #fff; padding: 0.45rem 0.8rem; border-radius: 8px; }
-.primary:hover { background: #000; border-color: #000; color: #fff; }
+.primary:hover { background: var(--accent-gold); border-color: var(--accent-gold); color: #fff; }
 .subheader { display: flex; align-items: center; justify-content: space-between; }
 .mini-controls { display: inline-flex; gap: 0.5rem; align-items: end; }
 .personal { display: grid; gap: 0.5rem; margin-bottom: 1rem; }
@@ -284,11 +299,9 @@ onMounted(async () => {
 .link { color: #0b72ef; text-decoration: none; }
 .link:hover { text-decoration: underline; }
 .link + .link { margin-left: 0.5rem; }
-.icon-link { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: #f3f4f6; text-decoration: none; }
-.icon-link:hover { background: #e5e7eb; text-decoration: none; }
-.bookmark-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; background: transparent; color: #444; border-radius: 6px; }
-.bookmark-btn:hover { background: #f1f1f1; }
+/* Use global icon-link and bookmark styles for consistent gold hover */
 .bookmark-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .seeds { color: #444; display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
 .seed { background: #f5f5f5; border: 1px solid #eee; border-radius: 999px; padding: 0.1rem 0.5rem; }
+.divider-tight { margin-top: -0.3rem; margin-bottom: 0.15rem; }
 </style>

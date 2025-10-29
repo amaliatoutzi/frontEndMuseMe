@@ -1,6 +1,7 @@
 <template>
   <div>
     <h3>Preferences</h3>
+    <p class="explain">Add a few tags to personalize your recommendations and Spotlight picks.</p>
     <div class="prefs">
       <div>
   <h4>My Tags ({{ myTags.length }})</h4>
@@ -84,7 +85,8 @@ async function remove(tag: string) {
   if (hadTag) prefsStore.removeTag(props.userId, tag);
   try {
     await removePreference(props.userId, tag);
-    success.value = `Removed: ${tag}`;
+  // Show removal as red with background per request
+  error.value = `Removed: ${tag}`;
     // No server refresh; keep optimistic state
   } catch (e: any) {
     error.value = e?.response?.data?.error || 'Failed to remove tag';
@@ -92,7 +94,12 @@ async function remove(tag: string) {
     if (hadTag) prefsStore.addTag(props.userId, tag);
   } finally {
     busy.value = false;
+    // Auto-clear transient messages
     if (success.value) setTimeout(() => (success.value = null), 1500);
+    // If removal succeeded, error contains our red message; clear it after a beat
+    if (error.value && error.value.startsWith('Removed: ')) {
+      setTimeout(() => { if (error.value?.startsWith('Removed: ')) error.value = null; }, 1500);
+    }
   }
 }
 
@@ -101,10 +108,12 @@ onMounted(load);
 
 <style scoped>
 .prefs { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.explain { color: var(--muted); margin: 0.25rem 0 0.75rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .chip { padding: 0.25rem 0.5rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); color: var(--text); transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease; }
 .chip:hover { background: var(--brand-600); color: #fff; border-color: var(--brand-600); }
-.link { background: transparent; border: none; color: #0070f3; cursor: pointer; }
+.link { background: transparent; border: none; color: var(--brand-600); cursor: pointer; }
+.link:hover { text-decoration: underline; }
 .success { color: #176617; background: #eef7ee; padding: 0.5rem; border-radius: 6px; margin-top: 0.5rem; }
-.error { color: #b00020; margin-top: 0.5rem; }
+.error { color: #b00020; background: #fee2e2; padding: 0.5rem; border-radius: 6px; margin-top: 0.5rem; }
 </style>

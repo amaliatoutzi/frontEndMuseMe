@@ -7,14 +7,11 @@
           <span class="logo-title">MuseMe</span>
         </RouterLink>
       </h1>
+      <form class="searchbar" role="search" @submit.prevent="onTopSearch">
+        <input v-model.trim="topQuery" type="search" placeholder="Search users, museums, tags…" aria-label="Search" />
+      </form>
       <nav class="nav">
-        <RouterLink to="/museums" class="nav-link" aria-label="Browse museums">
-          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="6" />
-            <line x1="16.5" y1="16.5" x2="21" y2="21" />
-          </svg>
-          <span class="label">Browse</span>
-        </RouterLink>
+
         <RouterLink to="/spotlight" class="nav-link" aria-label="Spotlight">
           <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
             <polygon points="13,2 8,14 12,14 11,22 16,10 12,10" />
@@ -54,16 +51,36 @@
       </nav>
     </header>
     <main class="app-main">
-      <RouterView />
+      <Transition name="route-fade-slide" mode="out-in">
+        <RouterView />
+      </Transition>
     </main>
+    <HelpButton />
+    <MapButton />
+    <ScrollTopButton />
+    <Toaster />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useAuthStore } from './stores/auth';
+import { useRouter } from 'vue-router';
 import logoUrl from '../media/logo.png';
+import HelpButton from './components/ui/HelpButton.vue';
+import MapButton from './components/ui/MapButton.vue';
+import ScrollTopButton from './components/ui/ScrollTopButton.vue';
+import Toaster from './components/ui/Toaster.vue';
 
 const auth = useAuthStore();
+const router = useRouter();
+const topQuery = ref('');
+
+function onTopSearch() {
+  const q = topQuery.value.trim();
+  if (!q) return;
+  router.push({ name: 'search', query: { q } });
+}
 </script>
 
 <style scoped>
@@ -77,7 +94,7 @@ const auth = useAuthStore();
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border);
 }
 .logo {
   margin: 0;
@@ -88,39 +105,33 @@ const auth = useAuthStore();
 .logo-title { font-weight: 700; letter-spacing: 0.2px; }
 .nav {
   display: flex;
-  gap: 1.25rem;
+  gap: 0.75rem;
   align-items: center;
 }
+.searchbar { flex: 1; display: flex; justify-content: center; }
+.searchbar input { width: min(520px, 56vw); padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); color: var(--text); }
+.searchbar input::placeholder { color: var(--muted); }
+.searchbar input:focus { outline: 3px solid var(--ring); outline-offset: 2px; border-color: var(--brand-600); background: #fff; }
 .nav :deep(a.nav-link) {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 10px;
 }
-/* Subtle separators between nav items (skip the first) */
-.nav :deep(a.nav-link:not(:first-child)) {
-  position: relative;
-  padding-left: 0.75rem;
-}
-.nav :deep(a.nav-link:not(:first-child))::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 1px;
-  height: 18px;
-  background: var(--border);
-}
+/* Remove old separators for a cleaner, modern look */
 .icon { line-height: 1; }
 .icon-svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }
-.nav :deep(a.nav-link:hover) .icon-svg { filter: drop-shadow(0 0 0.1px currentColor); }
+.nav :deep(a.nav-link:hover) .icon-svg { filter: none; }
+.nav :deep(a.nav-link .label) { font-variant-caps: normal; letter-spacing: 0.02em; font-weight: 600; }
+
+/* Modern hover + active pills */
+.nav :deep(a.nav-link:hover) { background: var(--surface-2); color: var(--brand-600); }
 .nav :deep(a.nav-link.router-link-active),
 .nav :deep(a.nav-link.router-link-exact-active) {
-  color: var(--brand-600);
-  background: var(--surface-3);
-  padding: 0.35rem 0.5rem;
-  border-radius: 10px;
-  box-shadow: inset 0 -2px 0 var(--brand-600);
+  background: var(--brand-600);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(124,45,75,0.18);
 }
 .app-main {
   padding: 1rem;

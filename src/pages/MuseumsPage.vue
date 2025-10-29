@@ -11,9 +11,13 @@
         @input="onSearchInput"
       />
       <button class="filter-btn" @click="openFilters" aria-haspopup="dialog" :aria-expanded="showFilters">
-        🔎 Filters
+        <Icon name="refresh" :size="16" /> Filters
         <span v-if="hasActiveFilters" class="badge">1</span>
       </button>
+      <div class="view-toggle" role="tablist" aria-label="View">
+        <button role="tab" :aria-selected="viewMode==='list'" class="toggle" :class="{ active: viewMode==='list' }" @click="viewMode='list'">List</button>
+        <button role="tab" :aria-selected="viewMode==='map'" class="toggle" :class="{ active: viewMode==='map' }" @click="viewMode='map'">Map</button>
+      </div>
     </div>
 
     <!-- Filters Modal -->
@@ -49,8 +53,10 @@
     <div v-if="loading" class="status">Loading…</div>
     <div v-else-if="filtered.length === 0" class="status">No results</div>
 
-    <ul class="grid">
-      <li v-for="m in paged" :key="m.id" class="card">
+    <MuseumMap v-if="!loading && filtered.length && viewMode==='map'" :museums="filtered" height="520px" @open="openMuseum" />
+
+    <ul v-if="viewMode==='list'" class="grid">
+      <li v-for="m in paged" :key="m.id" class="card" @click="openMuseum(m.id)">
         <div v-if="m.pictureUrl" class="media">
           <img :src="m.pictureUrl" :alt="m.name + ' photo'" loading="lazy" />
         </div>
@@ -62,12 +68,12 @@
         <p class="tags" v-if="m.tags?.length">
           <span v-for="t in m.tags" :key="t" class="tag">{{ formatTag(t) }}</span>
         </p>
-        <div class="row">
+        <div class="row" @click.stop>
           <p class="link" v-if="m.website">
-            <a :href="m.website" target="_blank" rel="noopener">Website</a>
+            <a :href="m.website" target="_blank" rel="noopener" class="icon-link" aria-label="Website" title="Website"><Icon name="globe" :size="18" /></a>
           </p>
           <p class="link">
-            <a :href="mapsUrl(m)" target="_blank" rel="noopener" class="icon-link" aria-label="Directions" title="Directions">📍</a>
+            <a :href="mapsUrl(m)" target="_blank" rel="noopener" class="icon-link" aria-label="Directions" title="Directions"><Icon name="map-pin" :size="18" /></a>
           </p>
           <button
             class="bookmark-btn"
@@ -93,7 +99,9 @@
       </li>
     </ul>
 
-    <div v-if="filtered.length > 0" class="pagination">
+    <MuseumDetailsModal v-model="showDetails" :museum-id="selectedMuseumId" />
+
+    <div v-if="filtered.length > 0 && viewMode==='list'" class="pagination">
       <button class="page-btn" :disabled="currentPage === 1" @click="prevPage" aria-label="Previous page">Prev</button>
       <span class="page-indicator">Page {{ currentPage }} of {{ totalPages }}</span>
       <button class="page-btn" :disabled="currentPage === totalPages" @click="nextPage" aria-label="Next page">Next</button>
@@ -107,6 +115,9 @@ import { allMuseums, listBoroughs, listTags, searchMuseums } from '../utils/cata
 import { useAuthStore } from '../stores/auth';
 import { storeToRefs } from 'pinia';
 import { useSavingStore } from '../stores/saving';
+import MuseumDetailsModal from '../components/MuseumDetailsModal.vue';
+import MuseumMap from '../components/common/MuseumMap.vue';
+import Icon from '../components/ui/Icon.vue';
 
 const loading = ref(false);
 const boroughs = listBoroughs();
@@ -133,6 +144,9 @@ const filtered = computed(() => {
     tags: tagFilter,
   });
 });
+
+// List / Map view toggle
+const viewMode = ref<'list' | 'map'>('list');
 
 const hasActiveFilters = computed(() => !!(borough.value || selectedTag.value));
 
@@ -226,6 +240,11 @@ watch([query, borough, selectedTag], () => {
 watch(totalPages, (tp) => {
   if (currentPage.value > tp) currentPage.value = tp;
 });
+
+// Modal selection
+const showDetails = ref(false);
+const selectedMuseumId = ref<string | null>(null);
+function openMuseum(id: string) { selectedMuseumId.value = id; showDetails.value = true; }
 </script>
 
 <style scoped>
@@ -241,6 +260,9 @@ watch(totalPages, (tp) => {
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+.view-toggle { display: inline-flex; gap: 0.25rem; margin-left: auto; }
+.toggle { padding: 0.45rem 0.75rem; border: 1px solid #ddd; background: #fafafa; border-radius: 999px; }
+.toggle.active { background: var(--brand-600); color: #fff; border-color: var(--brand-600); }
 .search {
   flex: 1 1 260px;
   padding: 0.5rem 0.75rem;
@@ -301,8 +323,8 @@ watch(totalPages, (tp) => {
 .link a { color: #0b72ef; text-decoration: none; }
 .link a:hover { text-decoration: underline; }
 .link + .link { margin-left: 0.5rem; }
-.icon-link { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: #f3f4f6; }
-.icon-link:hover { background: #e5e7eb; }
+.icon-link { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: #fff; border: 1px solid var(--border); }
+.icon-link:hover { background: var(--accent-gold); color: #fff; border-color: var(--accent-gold); }
 .bookmark-btn {
   display: inline-flex;
   align-items: center;
@@ -329,6 +351,7 @@ watch(totalPages, (tp) => {
 .modal-body { display: grid; gap: 0.75rem; padding: 0.75rem 1rem; }
 .modal-footer { display: flex; gap: 0.5rem; justify-content: flex-end; padding: 0.75rem 1rem; border-top: 1px solid #f0f0f0; }
 .close { background: transparent; border: none; font-size: 1rem; cursor: pointer; }
+.close:hover { color: var(--accent-gold); }
 .ghost { background: #fafafa; border: 1px solid #ddd; border-radius: 8px; padding: 0.45rem 0.8rem; }
 .primary { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 8px; padding: 0.45rem 0.8rem; }
 label.field { display: grid; gap: 0.25rem; }

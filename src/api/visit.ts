@@ -14,7 +14,9 @@ export type VisitEntry = {
   visit: string;
   exhibit: string;
   note?: string;
-  photoUrl?: string;
+  rating?: number;
+  photoUrl?: string; // legacy single-photo support
+  photoUrls?: string[]; // preferred multi-photo field
   loggedAt: string;
   updatedAt: string;
 };
@@ -104,18 +106,33 @@ export async function getEntriesByVisit(visitId: string): Promise<VisitEntry[]> 
   return [];
 }
 
-export async function addEntry(visit: string, exhibit: string, user: string, note?: string, photoUrl?: string): Promise<void> {
+export async function addEntry(
+  visit: string,
+  exhibit: string,
+  user: string,
+  note?: string,
+  photoUrls?: string[],
+  rating?: number
+): Promise<void> {
   const payload: any = { visit, exhibit, user };
-  if (note) payload.note = note;
-  if (photoUrl) payload.photoUrl = photoUrl;
+  if (note !== undefined) payload.note = note;
+  if (Array.isArray(photoUrls) && photoUrls.length) payload.photoUrls = photoUrls;
+  if (rating !== undefined) payload.rating = rating;
   const { data } = await http.post('/Visit/addEntry', payload);
   if (data && typeof data === 'object' && 'error' in data && data.error) throw new Error(data.error);
 }
 
-export async function editEntry(visitEntryId: string, user: string, note?: string, photoUrl?: string): Promise<void> {
+export async function editEntry(
+  visitEntryId: string,
+  user: string,
+  note?: string,
+  photoUrls?: string[],
+  rating?: number
+): Promise<void> {
   const payload: any = { visitEntryId, user };
   if (note !== undefined) payload.note = note;
-  if (photoUrl !== undefined) payload.photoUrl = photoUrl;
+  if (Array.isArray(photoUrls)) payload.photoUrls = photoUrls; // replace full set
+  if (rating !== undefined) payload.rating = rating;
   const { data } = await http.post('/Visit/editEntry', payload);
   if (data && typeof data === 'object' && 'error' in data && data.error) throw new Error(data.error);
 }

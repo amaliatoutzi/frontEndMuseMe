@@ -20,8 +20,8 @@
       </form>
 
       <div class="list">
-        <div v-if="loadingVisits">Loading visits…</div>
-        <p v-else-if="visits.length === 0">No visits yet. Create your first one above.</p>
+  <div v-if="loadingVisits">Loading visits…</div>
+  <p v-else-if="visits.length === 0" class="banner empty">No visits yet. Create your first one above.</p>
         <ul v-else class="visits">
           <li v-for="v in visits" :key="v._id" class="visit">
             <div class="visit-header">
@@ -55,6 +55,7 @@
               </div>
             </div>
 
+            <Transition name="fade-slide">
             <div v-if="expanded[v._id]" class="visit-body">
               <div v-if="props.allowAddEntries" class="add-entry">
                 <label>
@@ -73,7 +74,7 @@
 
               <div class="entries">
                 <div v-if="loadingEntries[v._id]">Loading entries…</div>
-                <p v-else-if="entries(v._id).length === 0">No entries yet.</p>
+                <p v-else-if="entries(v._id).length === 0" class="banner empty">No entries yet.</p>
                 <ul v-else class="entry-list">
                   <li v-for="en in entries(v._id)" :key="en._id" class="entry-row">
                     <div class="entry-main">
@@ -103,7 +104,7 @@
                           <div class="edit-field">
                             <label>Photo</label>
                             <label class="upload">
-                              <span>📷 Upload Photo</span>
+                              <span class="upload-text"><Icon name="camera" :size="16" /> Upload Photo</span>
                               <input type="file" accept="image/*" @change="onPickPhoto(en._id, $event)" />
                             </label>
                             <div v-if="editingPhotoUrl[en._id]" class="preview-one">
@@ -125,6 +126,7 @@
                 </ul>
               </div>
             </div>
+            </Transition>
           </li>
         </ul>
       </div>
@@ -139,6 +141,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useVisitsStore } from '../../stores/visits';
 import { allMuseums, getMuseumById, listExhibits, exhibitName } from '../../utils/catalog';
 import StarRating from '../common/StarRating.vue';
+import Icon from '../ui/Icon.vue';
 
 const props = withDefaults(defineProps<{ userId: string; showCreate?: boolean; autoSync?: boolean; allowAddEntries?: boolean }>(), { showCreate: true, autoSync: true, allowAddEntries: true });
 
@@ -239,8 +242,9 @@ async function onDelete(visitId: string) {
 function startEditEntry(en: any) {
   const entryId = en?._id as string;
   isEditing[entryId] = true;
+  // Prefer structured rating if present; fallback to parse from note
   const parsed = parseRatingFromNote(en?.note || '');
-  editingRating[entryId] = parsed.rating;
+  editingRating[entryId] = typeof en?.rating === 'number' ? en.rating : parsed.rating;
   editingNote[entryId] = parsed.restNote;
   const urls = urlsFor(en);
   editingPhotoUrl[entryId] = urls[0] || '';
@@ -256,11 +260,11 @@ function cancelEdit(entryId: string) {
 async function saveEdit(entryId: string, visitId: string) {
   savingEdit[entryId] = true;
   try {
-    const rating = editingRating[entryId] || 0;
-    const baseNote = editingNote[entryId] || '';
-    const note = rating ? `Rating: ${rating}/5. ${baseNote}`.trim() : baseNote;
-    const photoUrl = (editingPhotoUrl[entryId] || '').trim() || undefined;
-    await visitsStore.editEntry(entryId, visitId, props.userId, note, photoUrl);
+    const rating = editingRating[entryId];
+    const note = (editingNote[entryId] || '').trim() || undefined;
+    const photo = (editingPhotoUrl[entryId] || '').trim();
+    const photos = photo ? [photo] : undefined; // allow single replace for now
+    await visitsStore.editEntry(entryId, visitId, props.userId, note, photos, rating);
     isEditing[entryId] = false;
     delete editingNote[entryId];
     delete editingPhotoUrl[entryId];
@@ -316,6 +320,7 @@ onMounted(() => {
 
 <style scoped>
 .visits-panel { display: grid; gap: 1rem; }
+.visits-panel h3 { color: #111; }
 .create { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: end; }
 .create label { display: grid; gap: 0.25rem; font-size: 0.9rem; }
 .create select, .create input { padding: 0.4rem 0.6rem; border: 1px solid #ddd; border-radius: 6px; }
@@ -324,14 +329,15 @@ onMounted(() => {
 
 .list { display: grid; gap: 0.75rem; }
 .visits { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.75rem; }
-.visit { border: 1px solid #eee; border-radius: 8px; padding: 0.75rem; background: #fff; }
+.visit { border: 1px solid var(--brand-100); border-radius: 8px; padding: 0.75rem; background: #fff; }
 .visit-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .visit-header .info { display: flex; align-items: center; gap: 0.25rem; flex-wrap: wrap; }
+.visit-header .info strong { color: var(--brand-600); }
 .muted { color: #666; }
 .actions { display: inline-flex; gap: 0.4rem; }
 .chevron-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: none; background: transparent; color: inherit; }
 .chevron-btn:hover { background: var(--surface-2); }
-.chevron { transition: transform 160ms ease; }
+.chevron { transition: transform var(--dur-quick) var(--ease-standard); }
 .chevron.rotated { transform: rotate(180deg); }
 .danger { border: 1px solid #f5c2c7; background: #fff5f5; color: #b91c1c; border-radius: 6px; padding: 0.35rem 0.6rem; }
 .toggle:hover { background: #eee; }
@@ -345,9 +351,10 @@ onMounted(() => {
 
 .entries { display: grid; gap: 0.5rem; }
 .entry-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
-.entry-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; border: 1px solid #eee; border-radius: 6px; padding: 0.5rem 0.75rem; }
+.entry-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; border: 1px solid var(--brand-100); border-radius: 6px; padding: 0.5rem 0.75rem; background: #fff; }
 .entry-main { display: grid; gap: 0.25rem; }
 .entry-title { line-height: 1.2; }
+.entry-title strong { color: var(--brand-600); }
 .entry-note { color: #333; }
 .edit-card { display: grid; gap: 0.5rem; border: 1px solid #eee; background: #fff; border-radius: 8px; padding: 0.6rem; }
 .edit-field { display: grid; gap: 0.25rem; }
@@ -355,15 +362,18 @@ onMounted(() => {
 .edit-field input { padding: 0.4rem 0.6rem; border: 1px solid #ddd; border-radius: 6px; }
 .edit-actions { display: inline-flex; gap: 0.35rem; }
 .entry-actions { display: inline-flex; gap: 0.35rem; }
-.edit, .save, .cancel { border: 1px solid #ddd; background: #fafafa; border-radius: 6px; padding: 0.3rem 0.55rem; }
-.remove { border: 1px solid #ddd; background: #fafafa; border-radius: 6px; padding: 0.3rem 0.55rem; }
-.remove:hover { background: #eee; }
+.edit, .save, .cancel { border: 1px solid #ddd; background: #fafafa; border-radius: 6px; padding: 0.3rem 0.55rem; transition: background var(--dur-quick) var(--ease-standard), color var(--dur-quick) var(--ease-standard), border-color var(--dur-quick) var(--ease-standard); }
+.edit:hover, .save:hover, .cancel:hover { background: var(--accent-gold); color: #fff; border-color: var(--accent-gold); }
+.remove { border: 1px solid #ddd; background: #fafafa; border-radius: 6px; padding: 0.3rem 0.55rem; transition: background var(--dur-quick) var(--ease-standard), color var(--dur-quick) var(--ease-standard), border-color var(--dur-quick) var(--ease-standard); }
+.remove:hover { background: var(--accent-gold); border-color: var(--accent-gold); color: #fff; }
 
 .thumbs { display: grid; grid-auto-flow: column; grid-auto-columns: min-content; gap: 0.35rem; padding: 0.2rem 0 0; margin: 0; list-style: none; }
-.thumb img { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; border: 1px solid #eee; background: #f9f9f9; }
+.thumb img { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; border: 1px solid var(--brand-100); background: #f9f9f9; }
 
 /* Upload button style to match add visit */
-.upload { display: inline-grid; border: 1px solid #ddd; padding: 0.4rem 0.6rem; border-radius: 6px; cursor: pointer; background: #fafafa; width: fit-content; }
+.upload { display: inline-grid; border: 1px solid #ddd; padding: 0.4rem 0.6rem; border-radius: 6px; cursor: pointer; background: #fafafa; width: fit-content; transition: background var(--dur-quick) var(--ease-standard), color var(--dur-quick) var(--ease-standard), border-color var(--dur-quick) var(--ease-standard); }
+.upload:hover { background: var(--accent-gold); color: #fff; border-color: var(--accent-gold); }
 .upload input { display: none; }
+.upload-text { display: inline-flex; align-items: center; gap: 0.35rem; }
 .preview-one img { width: 120px; height: 120px; object-fit: cover; border: 1px solid #eee; border-radius: 6px; margin-top: 0.35rem; }
 </style>
