@@ -55,6 +55,7 @@
               </div>
             </div>
             <button
+              v-if="showFollowButton"
               class="btn"
               :disabled="!isAuthed || busy"
               @click="toggleFollow"
@@ -97,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { listTags, listBoroughs, searchMuseums, allMuseums } from '../utils/catalog';
 import { getUserIdByUsername } from '../api/users';
@@ -122,6 +123,12 @@ const auth = useAuthStore();
 const { currentUserId } = storeToRefs(auth);
 const isAuthed = computed(() => !!currentUserId.value);
 const isFollowing = ref(false);
+// Hide follow button when the looked-up user is the current user
+const showFollowButton = computed(() => {
+  if (!userId.value) return false;
+  if (!currentUserId.value) return true; // not logged in: can see button (disabled via isAuthed)
+  return userId.value.trim() !== currentUserId.value.trim();
+});
 
 const allTags = listTags();
 const boroughs = listBoroughs();
@@ -194,13 +201,20 @@ async function refreshFollowingStatus() {
   if (!currentUserId.value || !userId.value) return;
   try {
     const followees = await getFollowees(currentUserId.value);
-    isFollowing.value = followees.includes(userId.value);
+    // Defensive: ensure we compare same canonical string format
+    const target = userId.value.trim();
+    isFollowing.value = followees.some((id) => id && id.trim() === target);
   } catch { /* ignore */ }
 }
 
 onMounted(lookupUser);
 watch(() => route.query.q, (v) => { q.value = (v as string) || ''; lookupUser(); });
 watch([currentUserId, userId], () => { refreshFollowingStatus(); });
+
+// Keep following state in sync when other parts of the app change it
+const onFollowingChanged = () => refreshFollowingStatus();
+onMounted(() => { window.addEventListener('following-changed', onFollowingChanged as EventListener); });
+onUnmounted(() => { window.removeEventListener('following-changed', onFollowingChanged as EventListener); });
 
 function formatTag(tag: string): string {
   return tag.replace(/([a-z])([A-Z])/g, '$1 $2');
@@ -215,7 +229,8 @@ async function toggleFollow() {
       isFollowing.value = false;
     } else {
       await follow(currentUserId.value, userId.value);
-      isFollowing.value = true;
+      // Re-query server for authoritative state (avoid stale UI if backend rejected)
+      await refreshFollowingStatus();
     }
   } catch (e: any) {
     error.value = e?.response?.data?.error || e?.message || 'Action failed';

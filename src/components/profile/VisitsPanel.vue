@@ -67,7 +67,15 @@
                 </label>
                 <label>
                   Note
-                  <input type="text" v-model="entryNote[v._id]" placeholder="Optional note" />
+                  <input type="text" v-model="entryNote[v._id]" placeholder="What did you think?" />
+                </label>
+                <label>
+                  Rating
+                  <StarRating v-model="entryRating[v._id]" />
+                </label>
+                <label>
+                  Photo URL
+                  <input type="url" v-model="entryPhotoUrl[v._id]" placeholder="https://…" />
                 </label>
                 <button @click="add(v._id)" :disabled="!entryExhibit[v._id] || adding[v._id]">{{ adding[v._id] ? 'Adding…' : 'Add entry' }}</button>
               </div>
@@ -91,36 +99,10 @@
                           </li>
                         </ul>
                       </template>
-                      <template v-else>
-                        <div class="edit-card">
-                          <div class="edit-field">
-                            <label>Rating</label>
-                            <StarRating v-model="editingRating[en._id]" aria-label="Edit exhibit rating" />
-                          </div>
-                          <div class="edit-field">
-                            <label>Note</label>
-                            <textarea v-model="editingNote[en._id]" placeholder="Update your thoughts" />
-                          </div>
-                          <div class="edit-field">
-                            <label>Photo</label>
-                            <label class="upload">
-                              <span class="upload-text"><Icon name="camera" :size="16" /> Upload Photo</span>
-                              <input type="file" accept="image/*" @change="onPickPhoto(en._id, $event)" />
-                            </label>
-                            <div v-if="editingPhotoUrl[en._id]" class="preview-one">
-                              <img :src="editingPhotoUrl[en._id]" alt="Preview" @error="hideImg" />
-                            </div>
-                          </div>
-                          <div class="edit-actions">
-                            <button class="save" :disabled="savingEdit[en._id]" @click="saveEdit(en._id, v._id)">{{ savingEdit[en._id] ? 'Saving…' : 'Save' }}</button>
-                            <button class="cancel" :disabled="savingEdit[en._id]" @click="cancelEdit(en._id)">Cancel</button>
-                          </div>
-                        </div>
-                      </template>
+                      <template v-else></template>
                     </div>
                     <div class="entry-actions" v-if="!isEditing[en._id]">
-                      <button class="edit" @click="startEditEntry(en)">Edit</button>
-                      <button class="remove" @click="remove(en._id, v._id)">Remove</button>
+                      <button class="remove" @click="remove(en._id, v._id)">Delete Visit</button>
                     </div>
                   </li>
                 </ul>
@@ -162,12 +144,10 @@ const expanded = ref<Record<string, boolean>>({});
 const entryExhibit = reactive<Record<string, string>>({});
 const entryNote = reactive<Record<string, string>>({});
 const adding = reactive<Record<string, boolean>>({});
+const entryRating = reactive<Record<string, number>>({});
+const entryPhotoUrl = reactive<Record<string, string>>({});
 const deleting = reactive<Record<string, boolean>>({});
 const isEditing = reactive<Record<string, boolean>>({});
-const editingNote = reactive<Record<string, string>>({});
-const savingEdit = reactive<Record<string, boolean>>({});
-const editingPhotoUrl = reactive<Record<string, string>>({});
-const editingRating = reactive<Record<string, number>>({});
 
 function museumName(id: string): string { return getMuseumById(id)?.name || id; }
 function exhibitsOf(id: string) { return listExhibits(id); }
@@ -207,11 +187,18 @@ function toggle(visitId: string) {
 async function add(visitId: string) {
   const ex = entryExhibit[visitId];
   if (!ex) return;
+  const note = (entryNote[visitId] || '').trim();
   adding[visitId] = true;
   try {
-    await visitsStore.addEntry(visitId, ex, props.userId, entryNote[visitId] || undefined);
+    const rating = Math.max(1, Math.min(5, entryRating[visitId] || 0));
+    const photo = (entryPhotoUrl[visitId] || '').trim();
+    if (!photo) throw new Error('Please provide at least one Photo URL');
+    if (!rating) throw new Error('Please select a rating (1–5)');
+    await visitsStore.addEntry(visitId, ex, props.userId, note, [photo], rating);
     entryExhibit[visitId] = '';
     entryNote[visitId] = '';
+    entryRating[visitId] = 0 as any;
+    entryPhotoUrl[visitId] = '';
   } catch (e: any) {
     alert(e?.message || 'Failed to add entry');
   } finally {
@@ -239,42 +226,7 @@ async function onDelete(visitId: string) {
   }
 }
 
-function startEditEntry(en: any) {
-  const entryId = en?._id as string;
-  isEditing[entryId] = true;
-  // Prefer structured rating if present; fallback to parse from note
-  const parsed = parseRatingFromNote(en?.note || '');
-  editingRating[entryId] = typeof en?.rating === 'number' ? en.rating : parsed.rating;
-  editingNote[entryId] = parsed.restNote;
-  const urls = urlsFor(en);
-  editingPhotoUrl[entryId] = urls[0] || '';
-}
-
-function cancelEdit(entryId: string) {
-  isEditing[entryId] = false;
-  delete editingNote[entryId];
-  delete editingPhotoUrl[entryId];
-  delete editingRating[entryId];
-}
-
-async function saveEdit(entryId: string, visitId: string) {
-  savingEdit[entryId] = true;
-  try {
-    const rating = editingRating[entryId];
-    const note = (editingNote[entryId] || '').trim() || undefined;
-    const photo = (editingPhotoUrl[entryId] || '').trim();
-    const photos = photo ? [photo] : undefined; // allow single replace for now
-    await visitsStore.editEntry(entryId, visitId, props.userId, note, photos, rating);
-    isEditing[entryId] = false;
-    delete editingNote[entryId];
-    delete editingPhotoUrl[entryId];
-    delete editingRating[entryId];
-  } catch (e: any) {
-    alert(e?.message || 'Failed to save changes');
-  } finally {
-    savingEdit[entryId] = false;
-  }
-}
+// Editing disabled: editEntry removed from backend/front-end. Removing visit now cascades.
 
 function urlsFor(en: any): string[] {
   const out: string[] = [];
@@ -301,17 +253,7 @@ function parseRatingFromNote(note: string): { rating: number; restNote: string }
   return { rating, restNote };
 }
 
-function onPickPhoto(entryId: string, e: Event) {
-  const input = e.target as HTMLInputElement;
-  const file = input.files && input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    const dataUrl = typeof reader.result === 'string' ? reader.result : '';
-    if (dataUrl) editingPhotoUrl[entryId] = dataUrl;
-  };
-  reader.readAsDataURL(file);
-}
+// Photo picking disabled (no edit support)
 
 onMounted(() => {
   if (props.userId && props.autoSync) visitsStore.syncVisits(props.userId);

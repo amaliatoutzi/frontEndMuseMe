@@ -61,11 +61,18 @@ export async function getVisitsByUser(user: string): Promise<Visit[]> {
   resp = await http.post('/Visit/_getVisitsByUser', { owner: user });
   visits = tryParse(resp.data);
   if (visits.length) return visits;
+  // Attempt 2b: aggregated response shape
+  if (resp.data && typeof resp.data === 'object' && Array.isArray((resp.data as any).visits)) {
+    return (resp.data as any).visits as Visit[];
+  }
   // Attempt 3: fallback endpoint name
   try {
     resp = await http.post('/Visit/_getVisitsByOwner', { owner: user });
     visits = tryParse(resp.data);
     if (visits.length) return visits;
+    if (resp.data && typeof resp.data === 'object' && Array.isArray((resp.data as any).visits)) {
+      return (resp.data as any).visits as Visit[];
+    }
   } catch (_) { /* ignore */ }
   return [];
 }
@@ -94,6 +101,9 @@ export async function getEntriesByVisit(visitId: string): Promise<VisitEntry[]> 
   let resp = await http.post('/Visit/_getEntriesByVisit', { visitId });
   let entries = parse(resp.data);
   if (entries.length) return entries;
+  if (resp.data && typeof resp.data === 'object' && Array.isArray((resp.data as any).entries)) {
+    return (resp.data as any).entries as VisitEntry[];
+  }
   if (resp.data && typeof resp.data === 'object' && 'error' in resp.data && (resp.data as any).error) {
     throw new Error((resp.data as any).error);
   }
@@ -102,6 +112,9 @@ export async function getEntriesByVisit(visitId: string): Promise<VisitEntry[]> 
     resp = await http.post('/Visit/_listEntriesByVisit', { visitId });
     entries = parse(resp.data);
     if (entries.length) return entries;
+    if (resp.data && typeof resp.data === 'object' && Array.isArray((resp.data as any).entries)) {
+      return (resp.data as any).entries as VisitEntry[];
+    }
   } catch (_) { /* ignore */ }
   return [];
 }
@@ -110,30 +123,28 @@ export async function addEntry(
   visit: string,
   exhibit: string,
   user: string,
-  note?: string,
-  photoUrls?: string[],
-  rating?: number
+  note: string,
+  photoUrls: string[],
+  rating: number
 ): Promise<void> {
-  const payload: any = { visit, exhibit, user };
-  if (note !== undefined) payload.note = note;
-  if (Array.isArray(photoUrls) && photoUrls.length) payload.photoUrls = photoUrls;
-  if (rating !== undefined) payload.rating = rating;
+  if (typeof note !== 'string' || note.trim() === '') {
+    throw new Error('Note is required');
+  }
+  if (!Array.isArray(photoUrls) || photoUrls.length === 0) {
+    throw new Error('At least one photo is required');
+  }
+  if (typeof rating !== 'number' || rating < 1 || rating > 5) {
+    throw new Error('Rating must be between 1 and 5');
+  }
+  const sanitizedPhotos = photoUrls
+    .filter(p => typeof p === 'string')
+    .map(p => p.trim())
+    .filter(p => p.length > 0);
+  if (sanitizedPhotos.length === 0) {
+    throw new Error('Provided photo URLs are invalid');
+  }
+  const payload = { visit, exhibit, user, note: note.trim(), photoUrls: sanitizedPhotos, rating };
   const { data } = await http.post('/Visit/addEntry', payload);
-  if (data && typeof data === 'object' && 'error' in data && data.error) throw new Error(data.error);
-}
-
-export async function editEntry(
-  visitEntryId: string,
-  user: string,
-  note?: string,
-  photoUrls?: string[],
-  rating?: number
-): Promise<void> {
-  const payload: any = { visitEntryId, user };
-  if (note !== undefined) payload.note = note;
-  if (Array.isArray(photoUrls)) payload.photoUrls = photoUrls; // replace full set
-  if (rating !== undefined) payload.rating = rating;
-  const { data } = await http.post('/Visit/editEntry', payload);
   if (data && typeof data === 'object' && 'error' in data && data.error) throw new Error(data.error);
 }
 

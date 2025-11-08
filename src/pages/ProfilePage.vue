@@ -96,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
@@ -220,6 +220,11 @@ async function loadConnectionCounts() {
 onMounted(loadConnectionCounts);
 watch(userId, () => loadConnectionCounts());
 
+// Refresh counts when following state changes anywhere in the app
+const onFollowingChanged = () => loadConnectionCounts();
+onMounted(() => { window.addEventListener('following-changed', onFollowingChanged as EventListener); });
+onUnmounted(() => { window.removeEventListener('following-changed', onFollowingChanged as EventListener); });
+
 // Toggle which connections list to show (hidden by default)
 const connOpen = ref<'none' | 'followers' | 'following'>('none');
 function openConn(which: 'followers' | 'following') { connOpen.value = which; }
@@ -239,12 +244,16 @@ function closeConn() { connOpen.value = 'none'; }
 .name { margin: 0; font-size: 1.4rem; line-height: 1.1; }
 .handle { margin: 0; color: var(--muted); }
 .hero-actions { display: flex; gap: 0.5rem; }
-.btn { padding: 0.5rem 0.8rem; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff; }
+.btn { padding: 0.5rem 0.8rem; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff; color: #111827; }
 .btn.ghost { background: #fafafa; }
 .btn.danger { background: #fee2e2; border-color: #fecaca; }
 .btn { transition: background var(--dur-quick) var(--ease-standard), color var(--dur-quick) var(--ease-standard), border-color var(--dur-quick) var(--ease-standard), transform var(--dur-normal) var(--ease-standard); }
 .btn:hover { filter: brightness(0.98); transform: translateY(-1px); }
 .btn.ghost:hover { background: var(--accent-gold); border-color: var(--accent-gold); color: #fff; filter: none; }
+.btn.primary { background: var(--brand-600); border-color: var(--brand-600); color: #fff; }
+.btn.primary:hover { background: var(--accent-gold); border-color: var(--accent-gold); color: #fff; filter: none; }
+.btn:disabled, .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+.btn.primary:disabled, .btn.primary[disabled] { color: #fff; }
 .btn:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
 
 .error { color: #b00020; background: #fce4ec; padding: 0.5rem; border-radius: 6px; border-left: 3px solid #b00020; margin: 0; }

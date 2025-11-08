@@ -47,7 +47,7 @@ export async function getUsernameByUserId(userId: string): Promise<string | null
   if (idToUsernameCache.has(key)) return idToUsernameCache.get(key)!;
 
   // Try preferred path first, then fallback to an alternate namespace if needed
-  const tryPaths = ['/UserAuthentication/_getUsernameByUserId', '/Following/_getUsernameByUserId'];
+  const tryPaths = ['/Following/_getUsernameByUserId', '/UserAuthentication/_getUsernameByUserId'];
 
   for (const path of tryPaths) {
     try {
@@ -72,7 +72,15 @@ export async function getUsernameByUserId(userId: string): Promise<string | null
         return null;
       };
 
-      const name = parse(data);
+      let name = parse(data);
+      // Some backends respond { profile: { firstName, lastName, username } } when username is absent
+      if (!name && data && typeof data === 'object') {
+        const p = (data as any).profile;
+        if (p && typeof p === 'object') {
+          if (p.username) name = String(p.username);
+          else if (p.firstName || p.lastName) name = String([p.firstName, p.lastName].filter(Boolean).join(' '));
+        }
+      }
       if (name) {
         idToUsernameCache.set(key, name);
         usernameToIdCache.set(name, key);

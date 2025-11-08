@@ -275,6 +275,17 @@ onMounted(async () => {
   const vs = visits.visitsForUser(uid);
   await Promise.all(vs.map((v) => visits.syncEntries(v._id)));
   await loadAvgRating(uid);
+  // Listen for global review changes (e.g., after deleting a visit cascades reviews)
+  const handler = async () => {
+    if (!currentUserId.value) return;
+    await loadAvgRating(currentUserId.value);
+  };
+  window.addEventListener('reviews-changed', handler);
+  // Cleanup on unmount
+  try {
+    // @ts-ignore next-line: Vue will call this hook implicitly
+    onUnmounted(() => window.removeEventListener('reviews-changed', handler));
+  } catch {}
 });
 
 watch(currentUserId, async (uid) => {
@@ -324,10 +335,13 @@ async function onSubmit() {
     const visitId = await visits.create(currentUserId.value, museumId.value);
     // Add entries for each selected exhibit
     for (const exId of selectedExhibits.value) {
-      const rating = perExhibitRating[exId] || undefined;
-      const note = perExhibitNote[exId] || undefined;
-      const photos = perExhibitPhotoUrls[exId] && perExhibitPhotoUrls[exId].length ? perExhibitPhotoUrls[exId] : undefined;
-      await visits.addEntry(visitId, exId, currentUserId.value, note, photos, rating);
+      const rating = Math.max(1, Math.min(5, perExhibitRating[exId] || 0));
+      const note = (perExhibitNote[exId] || '').trim();
+      const photos = (perExhibitPhotoUrls[exId] || []).filter((u) => typeof u === 'string' && u.trim());
+      if (!note) throw new Error('Each exhibit requires a note');
+      if (!photos.length) throw new Error('Each exhibit requires at least one photo');
+      if (!rating) throw new Error('Each exhibit requires a rating 1–5');
+      await visits.addEntry(visitId, exId, currentUserId.value, note, photos as string[], rating);
     }
     // Ensure entries are synced for the new visit before returning to list
     await visits.syncEntries(visitId);

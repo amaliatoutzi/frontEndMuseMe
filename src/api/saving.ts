@@ -21,6 +21,9 @@ export async function listSaved(user: string, limit?: number): Promise<string[]>
       .map((row: any) => (row && typeof row === 'object' ? (row.item as string) : undefined))
       .filter((x: any) => typeof x === 'string');
   }
+  if (data && typeof data === 'object' && Array.isArray((data as any).items)) {
+    return (data as any).items.filter((x: any) => typeof x === 'string');
+  }
   if (data && typeof data === 'object' && 'error' in data && data.error) {
     throw new Error(data.error);
   }

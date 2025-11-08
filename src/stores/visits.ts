@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { createVisit, getVisitsByUser, getEntriesByVisit, addEntry as apiAddEntry, editEntry as apiEditEntry, removeEntry as apiRemoveEntry, removeVisit as apiRemoveVisit, type Visit, type VisitEntry } from '../api/visit';
+import { createVisit, getVisitsByUser, getEntriesByVisit, addEntry as apiAddEntry, removeEntry as apiRemoveEntry, removeVisit as apiRemoveVisit, type Visit, type VisitEntry } from '../api/visit';
 
 export type UserId = string;
 
@@ -71,18 +71,40 @@ export const useVisitsStore = defineStore('visits', {
       await this.syncVisits(userId);
       return id;
     },
-    async addEntry(visitId: string, exhibit: string, userId: UserId, note?: string, photoUrls?: string[], rating?: number) {
-      // optimistic: add a placeholder entry id? We'll just sync after API.
+    async addEntry(visitId: string, exhibit: string, userId: UserId, note: string, photoUrls: string[], rating: number) {
+      // Validate required fields before calling API
+      if (typeof note !== 'string' || note.trim() === '') {
+        throw new Error('Note is required');
+      }
+      if (!Array.isArray(photoUrls) || photoUrls.length === 0) {
+        throw new Error('At least one photo is required');
+      }
+      if (typeof rating !== 'number' || rating < 1 || rating > 5) {
+        throw new Error('Rating must be between 1 and 5');
+      }
       await apiAddEntry(visitId, exhibit, userId, note, photoUrls, rating);
       await this.syncEntries(visitId);
     },
-    async editEntry(visitEntryId: string, visitId: string, userId: UserId, note?: string, photoUrls?: string[], rating?: number) {
-      await apiEditEntry(visitEntryId, userId, note, photoUrls, rating);
-      await this.syncEntries(visitId);
-    },
     async removeEntry(visitEntryId: string, visitId: string, userId: UserId) {
-      await apiRemoveEntry(visitEntryId, userId);
-      await this.syncEntries(visitId);
+      // New semantics: removing an entry cascades removal of the entire visit
+      // Optimistically drop visit + entries from local state
+      const beforeVisits = (this.visitsByUser[userId] || []).slice();
+      const beforeEntries = this.entriesByVisit[visitId];
+      this.setVisits(userId, beforeVisits.filter(v => v._id !== visitId));
+      delete this.entriesByVisit[visitId];
+      try {
+        await apiRemoveEntry(visitEntryId, userId);
+        // Notify listeners (e.g., stats components) that reviews/ratings may have changed.
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('reviews-changed'));
+        }
+      } catch (e) {
+        // Rollback on failure
+        this.setVisits(userId, beforeVisits);
+        if (beforeEntries) this.setEntries(visitId, beforeEntries);
+        await this.syncVisits(userId);
+        throw e;
+      }
     },
     async removeVisit(visitId: string, userId: UserId) {
       // Optimistically drop from state
@@ -92,6 +114,9 @@ export const useVisitsStore = defineStore('visits', {
       delete this.entriesByVisit[visitId];
       try {
         await apiRemoveVisit(visitId, userId);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('reviews-changed'));
+        }
       } catch (e) {
         // Roll back on failure and re-sync from server to be safe
         this.setVisits(userId, before);

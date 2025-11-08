@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, onUnmounted, ref, computed } from 'vue';
 import { useToastStore } from '../../stores/toast';
 import { getFollowers, getFollowees, follow, unfollow } from '../../api/following';
 import { getUsernameByUserId } from '../../api/users';
@@ -83,18 +83,18 @@ async function load() {
     ]);
     followers.value = flwrs;
     followees.value = flwees;
-    // Best-effort: resolve usernames for any unknown ids
-    const idsToResolve = Array.from(new Set([...flwrs, ...flwees].filter((id) => !usersStore.getUsername(id))));
-    await Promise.all(
-      idsToResolve.map(async (id) => {
-        try {
-          const name = await getUsernameByUserId(id);
-          if (name) usersStore.setMapping(id, name);
-        } catch {
-          // If reverse lookup endpoint is missing, skip silently; fallback shows 'unknown'
-        }
-      })
-    );
+
+    // First pass: attempt batch resolution by issuing one request per unknown id (existing approach)
+    const unknown = [...new Set([...flwrs, ...flwees].filter((id) => !usersStore.getUsername(id)))];
+    // Resolve sequentially to avoid hammering the backend if many
+    for (const id of unknown) {
+      try {
+        const name = await getUsernameByUserId(id);
+        if (name) usersStore.setMapping(id, name);
+      } catch {
+        /* ignore individual failures */
+      }
+    }
   } catch (e: any) {
     error.value = e?.response?.data?.error || e?.message || 'Failed to load following data';
   }
@@ -117,8 +117,17 @@ async function doUnfollow(u: string) {
 
 onMounted(load);
 
+// Keep panel in sync with global follow/unfollow actions
+const onFollowingChanged = () => load();
+onMounted(() => { window.addEventListener('following-changed', onFollowingChanged as EventListener); });
+onUnmounted(() => { window.removeEventListener('following-changed', onFollowingChanged as EventListener); });
+
 function displayName(id: string): string {
-  return usersStore.getUsername(id) || 'unknown';
+  const mapped = usersStore.getUsername(id);
+  if (mapped) return mapped;
+  // Opportunistic inline resolution on first render (lazy hydrate)
+  getUsernameByUserId(id).then((name) => { if (name) usersStore.setMapping(id, name); }).catch(() => {});
+  return 'unknown';
 }
 function initial(name: string): string { return (name?.[0] || '?').toUpperCase(); }
 

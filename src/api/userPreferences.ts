@@ -2,8 +2,12 @@ import http from './http';
 
 export async function getPreferencesForUser(user: string): Promise<string[]> {
   const { data } = await http.post('/UserPreferences/_getPreferencesForUser', { user });
-  // data: [{ tag: string }]
-  return Array.isArray(data) ? data.map((x: any) => x.tag) : [];
+  // Accept both row array [{ tag }] and aggregated { tags }
+  if (Array.isArray(data)) return data.map((x: any) => x?.tag).filter((v: any) => typeof v === 'string');
+  if (data && typeof data === 'object' && Array.isArray((data as any).tags)) {
+    return (data as any).tags.filter((v: any) => typeof v === 'string');
+  }
+  return [];
 }
 
 export async function addPreference(user: string, tag: string): Promise<void> {
