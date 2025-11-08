@@ -7,7 +7,7 @@
   <h4>My Tags ({{ myTags.length }})</h4>
         <ul>
           <li v-for="t in myTags" :key="t">
-            {{ t }}
+            {{ humanize(t) }}
             <button class="link" @click="remove(t)" :disabled="busy">remove</button>
           </li>
         </ul>
@@ -16,7 +16,7 @@
         <h4>Add Tag</h4>
         <div class="chips">
           <button v-for="t in availableToAdd" :key="t" class="chip" @click="add(t)" :disabled="busy">
-            + {{ t }}
+            + {{ humanize(t) }}
           </button>
         </div>
       </div>
@@ -48,6 +48,14 @@ const TAGS = [
 
 const availableToAdd = computed(() => TAGS.filter(t => !myTags.value.includes(t)));
 
+// Display helper: insert spaces for camelCase/PascalCase tags (e.g., NaturalHistory -> Natural History)
+function humanize(s: string): string {
+  return String(s)
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .trim();
+}
+
 async function load() {
   error.value = null;
   // Merge from server without losing locally stored tags
@@ -66,7 +74,7 @@ async function add(tag: string) {
     prefsStore.addTag(props.userId, tag);
     // Fire-and-forget server call
     await addPreference(props.userId, tag);
-    success.value = `Added: ${tag}`;
+    success.value = `Added: ${humanize(tag)}`;
     // Do not refresh from server here to avoid losing prior optimistic tags
   } catch (e: any) {
     error.value = e?.response?.data?.error || 'Failed to add tag';
@@ -86,7 +94,7 @@ async function remove(tag: string) {
   try {
     await removePreference(props.userId, tag);
   // Show removal as red with background per request
-  error.value = `Removed: ${tag}`;
+  error.value = `Removed: ${humanize(tag)}`;
     // No server refresh; keep optimistic state
   } catch (e: any) {
     error.value = e?.response?.data?.error || 'Failed to remove tag';
