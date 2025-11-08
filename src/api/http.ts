@@ -59,8 +59,13 @@ const EXCLUDED_ROUTES = new Set<string>([
   'Similarity/neighbors',
 ]);
 
+// Resolve API base URL.
+// In production (Render), set VITE_API_BASE_URL to your deployed backend URL (e.g., https://your-backend.onrender.com).
+// Locally we fall back to '/api' so Vite dev server proxy rewrites to localhost:8000.
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+
 const http = axios.create({
-  baseURL: '/api', // Changed from http://localhost:8000/api to use Vite proxy
+  baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
   timeout: 10000,
 });
