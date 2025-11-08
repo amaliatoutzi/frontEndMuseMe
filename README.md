@@ -35,7 +35,7 @@ This repository is the Vue 3 + Vite frontend. It talks to a backend (proxied at 
 - Visits (Showcase)
 	- Recent visits list with chevron toggles; date-only timestamps
 	- Add Visit form: pick museum, select exhibits, add ratings, notes, and photos per exhibit
-	- Persists a museum-level review (stars + optional note) when provided
+	- Persists a museum-level review (stars + note) when provided
 	- Stats cards keep teal text with a subtle gold top border
 
 - Profile
@@ -123,12 +123,12 @@ src/
 	utils/            # Catalog helpers
 ```
 
-## Visual design study
+## Visual design study (4b)
 
 - Color palette: [visual-design-study/colors.png](visual-design-study/colors.png)
 - Typography samples: [visual-design-study/fonts.png](visual-design-study/fonts.png)
 
-## Updated user journey
+## Updated user journey (4b)
 
 - Latest narrative: [updated_user_journey.md](updated_user_journey.md)
 - Original version: [user-journey.md](user-journey.md)
@@ -144,7 +144,9 @@ src/
 
 - During build, you may see a non-blocking warning about a store being both statically and dynamically imported (e.g., `src/stores/profile.ts`). This does not impact functionality.
 
-## Updated screen recording
+## Updated screen recording (4b)
+
+Note for the latest screen recording view the back end README.
 
 - Watch on YouTube: [Updated Demo](https://youtu.be/jSrmu-8SbcY)
 
