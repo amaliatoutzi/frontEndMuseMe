@@ -168,7 +168,7 @@ const filteredFollowees = computed(() => {
 .who { display: inline-flex; align-items: center; gap: 0.5rem; }
 .avatar { width: 26px; height: 26px; border-radius: 999px; background: var(--brand-600); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 0.85rem; }
 .name { font-weight: 600; }
-.pill { border: 1px solid var(--accent-gold); background: #fffdf7; color: var(--brand-600); font-size: 0.75rem; border-radius: 999px; padding: 0.1rem 0.45rem; }
+.pill { border: 1px solid var(--accent-gold); background: #fffdf7; color: var(--brand-600); font-size: 0.85rem; font-weight: 600; border-radius: 999px; padding: 0.12rem 0.55rem; letter-spacing: 0.3px; }
 .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; background: transparent; color: #444; border-radius: 6px; }
 .icon-btn:hover { background: var(--surface-2); }
 .actions { display: flex; align-items: center; gap: 0.25rem; }

@@ -1,5 +1,5 @@
 <template>
-  <div class="stars" role="radiogroup" :aria-label="ariaLabel">
+  <div class="stars" role="radiogroup" :aria-label="ariaLabel" @mouseleave="hover = 0">
     <button
       v-for="i in 5"
       :key="i"
@@ -10,16 +10,22 @@
       @click="onSet(i)"
       @keydown.enter.prevent="onSet(i)"
       @keydown.space.prevent="onSet(i)"
+      @mouseenter="hover = i"
+      @focus="hover = i"
     >
-      <span :class="{ filled: i <= modelValue }" aria-hidden="true">★</span>
+      <span :class="{ filled: i <= (hover || modelValue) }" aria-hidden="true">★</span>
       <span class="sr-only">{{ i }} star{{ i > 1 ? 's' : '' }}</span>
     </button>
   </div>
+
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 const props = defineProps<{ modelValue: number; ariaLabel?: string }>();
 const emit = defineEmits<{ (e: 'update:modelValue', v: number): void }>();
+
+const hover = ref(0);
 
 function onSet(v: number) {
   emit('update:modelValue', v);

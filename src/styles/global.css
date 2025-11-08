@@ -246,3 +246,17 @@ input, button, select, textarea { font: inherit; font-size: 1rem; }
     scroll-behavior: auto !important;
   }
 }
+
+/* ---- Form accents (Option A) ---- */
+/* Ensure native checkboxes use our brand color when checked */
+.exhibit-list input[type="checkbox"] {
+  accent-color: var(--brand-600);
+}
+
+/* Brand the textarea focus ring for Add Visit form and per-exhibit notes */
+.overall textarea:focus,
+.field textarea:focus {
+  border-color: var(--brand-500);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(124, 45, 75, 0.25);
+}

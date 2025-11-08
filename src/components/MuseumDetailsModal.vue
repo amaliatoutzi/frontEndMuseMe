@@ -29,7 +29,7 @@
               :title="!userId ? 'Login to save' : (saved ? 'Unsave' : 'Save')"
               :aria-label="!userId ? 'Login to save' : (saved ? 'Unsave' : 'Save')"
             >
-              <Icon name="bookmark" :size="18" />
+              <Icon name="bookmark" :size="18" :filled="saved" />
             </button>
           </div>
         </div>
@@ -41,8 +41,8 @@
             <li v-for="ex in exhibits" :key="ex.id" class="ex">
               <div class="ex-name">{{ ex.name }}</div>
               <div class="ex-sub" v-if="ex.start_date || ex.end_date || ex.type || ex.gallery">
-                <span v-if="ex.type">{{ ex.type }}</span>
-                <span v-if="ex.gallery"> • {{ ex.gallery }}</span>
+                <span v-if="ex.type">{{ formatCategory(ex.type) }}</span>
+                <span v-if="ex.gallery"> • {{ formatCategory(ex.gallery) }}</span>
                 <span v-if="ex.start_date || ex.end_date"> • {{ formatDates(ex.start_date, ex.end_date) }}</span>
               </div>
             </li>
@@ -92,6 +92,14 @@ function formatTag(tag: string): string {
   return tag.replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 
+function formatCategory(raw?: string): string {
+  if (!raw) return '';
+  let s = raw.replace(/[\-_]+/g, ' ');
+  s = s.replace(/([a-z])([A-Z])/g, '$1 $2');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+}
+
 function formatDates(start?: string, end?: string): string {
   if (!start && !end) return '';
   if (start && end) return `${start} – ${end}`;
@@ -139,7 +147,8 @@ watch(open, async (v) => {
 .tags { display: flex; flex-wrap: wrap; gap: 0.25rem; }
 .tag { font-size: 0.75rem; padding: 0.1rem 0.4rem; border: 1px solid #eee; border-radius: 999px; color: #444; }
 .actions { display: inline-flex; gap: 0.35rem; }
-.save-btn { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.5rem; border: 1px solid var(--border); background: #fff; border-radius: 8px; cursor: pointer; color: var(--brand-600); }
+.save-btn { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.5rem; border: 1px solid var(--border); background: #fff; border-radius: 8px; cursor: pointer; color: var(--brand-600); transition: background var(--dur-quick) var(--ease-standard), color var(--dur-quick) var(--ease-standard), border-color var(--dur-quick) var(--ease-standard); }
+/* Match non-popup card behavior: always white background; only hover changes */
 .save-btn:hover { background: var(--accent-gold); color: #fff; border-color: var(--accent-gold); }
 .icon-link { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: #fff; border: 1px solid var(--border); color: #111; }
 .icon-link:hover { background: var(--accent-gold); color: #fff; border-color: var(--accent-gold); }

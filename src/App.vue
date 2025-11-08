@@ -8,7 +8,7 @@
         </RouterLink>
       </h1>
       <form class="searchbar" role="search" @submit.prevent="onTopSearch">
-        <input v-model.trim="topQuery" type="search" placeholder="Search users, museums, tags…" aria-label="Search" />
+        <input v-model.trim="topQuery" type="search" placeholder="Search users and museums…" aria-label="Search" />
       </form>
       <nav class="nav">
 
@@ -80,6 +80,8 @@ function onTopSearch() {
   const q = topQuery.value.trim();
   if (!q) return;
   router.push({ name: 'search', query: { q } });
+  // Clear the input after submitting so user sees an empty bar while results show
+  topQuery.value = '';
 }
 </script>
 

@@ -90,7 +90,19 @@
                         <strong>{{ exhibitLabel(v.museum, en.exhibit) }}</strong>
                       </div>
                       <template v-if="!isEditing[en._id]">
-                        <div class="entry-note" v-if="en.note"><span class="muted">—</span> {{ en.note }}</div>
+                        <div class="entry-note" v-if="en.note || (en.rating && en.rating > 0)">
+                          <span
+                            v-if="en.rating && en.rating > 0"
+                            class="stars-inline"
+                            :aria-label="`Rated ${en.rating} out of 5`"
+                          >
+                            <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= en.rating }">★</span>
+                          </span>
+                          <span v-if="en.rating && en.rating > 0 && en.note" class="sep"> • </span>
+                          <template v-if="en.note">
+                            <span class="muted" v-if="!en.rating || en.rating <= 0">— </span>{{ en.note }}
+                          </template>
+                        </div>
                         <ul v-if="urlsFor(en).length" class="thumbs">
                           <li v-for="(u, i) in urlsFor(en)" :key="i" class="thumb">
                             <a :href="u" target="_blank" rel="noopener noreferrer">
@@ -298,6 +310,10 @@ onMounted(() => {
 .entry-title { line-height: 1.2; }
 .entry-title strong { color: var(--brand-600); }
 .entry-note { color: #333; }
+.entry-note .sep { color: #6b7280; }
+.stars-inline { display: inline-flex; gap: 0.1rem; vertical-align: text-bottom; }
+.stars-inline .star { color: #d1d5db; font-size: 1rem; line-height: 1; }
+.stars-inline .star.filled { color: #f5b301; }
 .edit-card { display: grid; gap: 0.5rem; border: 1px solid #eee; background: #fff; border-radius: 8px; padding: 0.6rem; }
 .edit-field { display: grid; gap: 0.25rem; }
 .edit-field textarea { min-height: 70px; padding: 0.45rem 0.6rem; border: 1px solid #ddd; border-radius: 6px; resize: vertical; }

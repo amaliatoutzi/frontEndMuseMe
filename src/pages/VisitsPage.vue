@@ -93,10 +93,6 @@
           <div class="row">
             <label>Your Review</label>
             <textarea v-model="overallNote" placeholder="Share your experience at this museum..."></textarea>
-            <div class="actions">
-              <button type="button" class="ghost" @click="preview = !preview">{{ preview ? 'Edit' : 'Preview' }}</button>
-            </div>
-            <div v-if="preview" class="preview">{{ overallNote }}</div>
           </div>
         </div>
       </section>
@@ -110,7 +106,7 @@
               <input type="checkbox" :value="ex.id" v-model="selectedExhibits" />
               <div class="ex-text">
                 <div class="ex-name">{{ ex.name }}</div>
-                <div class="ex-sub muted" v-if="ex.gallery || ex.type">{{ [ex.gallery, ex.type].filter(Boolean).join(' • ') }}</div>
+                <div class="ex-sub muted" v-if="ex.gallery || ex.type">{{ [ex.gallery, ex.type].filter(Boolean).map((s) => formatCategory(s as string)).join(' • ') }}</div>
               </div>
             </label>
           </li>
@@ -193,7 +189,7 @@ const selectedExhibits = ref<string[]>([]);
 
 const overallRating = ref(0);
 const overallNote = ref('');
-const preview = ref(false);
+// Preview removed for simplicity; users can edit the text directly until submit
 
 // Per-exhibit state
 const perExhibitRating = reactive<Record<string, number>>({});
@@ -301,6 +297,17 @@ const submitting = ref(false);
 
 function exName(id: string) { return museumId.value ? exhibitName(museumId.value, id) : id; }
 
+function formatCategory(raw?: string): string {
+  if (!raw) return '';
+  // Replace underscores/hyphens with spaces
+  let s = raw.replace(/[\-_]+/g, ' ');
+  // Insert space between camelCase/PascalCase boundaries, e.g., CollectionHighlight -> Collection Highlight
+  s = s.replace(/([a-z])([A-Z])/g, '$1 $2');
+  // Collapse multiple spaces and trim
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+}
+
 function onPickPhoto(exId: string, e: Event) {
   const input = e.target as HTMLInputElement;
   const files = input.files ? Array.from(input.files) : [];
@@ -367,9 +374,28 @@ async function onSubmit() {
   }
 }
 
+function resetForm() {
+  museumId.value = '';
+  museumQuery.value = '';
+  showSuggestions.value = false;
+  selectedExhibits.value = [];
+  overallRating.value = 0;
+  overallNote.value = '';
+  for (const k of Object.keys(perExhibitRating)) delete perExhibitRating[k];
+  for (const k of Object.keys(perExhibitNote)) delete perExhibitNote[k];
+  for (const k of Object.keys(perExhibitPhotos)) delete perExhibitPhotos[k];
+  for (const k of Object.keys(perExhibitPhotoUrls)) delete perExhibitPhotoUrls[k];
+}
+
 function cancel() {
+  resetForm();
   showForm.value = false;
 }
+
+// Also clear the form each time we switch into the form view to guarantee a blank slate
+watch(showForm, (v) => {
+  if (v) resetForm();
+});
 
 // Autocomplete interactions
 function selectMuseum(m: { id: string; name: string }) {
@@ -435,6 +461,10 @@ function removePhoto(exId: string, index: number) {
 .submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .museum-card { border: 1px solid #eee; border-radius: 10px; padding: 1rem; display: grid; gap: 0.75rem; background: #fff; }
+.form-view { display: grid; gap: 0.75rem; }
+.museum-card,
+.exhibit-pick,
+.ex-card { background: linear-gradient(180deg, rgba(215,174,43,0.04) 0%, #ffffff 55%); }
 .museum-select { display: grid; gap: 0.25rem; position: relative; }
 .combo { position: relative; }
 .combo input { width: 100%; padding: 0.45rem 0.6rem; border: 1px solid #ddd; border-radius: 8px; }
@@ -467,6 +497,7 @@ function removePhoto(exId: string, index: number) {
 .exhibit-pick { border: 1px solid #eee; border-radius: 10px; padding: 1rem; display: grid; gap: 0.5rem; background: #fff; }
 .exhibit-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.35rem; }
 .ex-row { border: 1px solid #f0f0f0; border-radius: 8px; padding: 0.5rem 0.6rem; }
+.ex-row:hover { background: rgba(215,174,43,0.06); border-color: rgba(215,174,43,0.25); }
 .ex-label { display: flex; gap: 0.6rem; align-items: center; }
 .ex-text { display: grid; line-height: 1.2; }
 .ex-name { font-weight: 600; }
@@ -474,7 +505,7 @@ function removePhoto(exId: string, index: number) {
 .exhibit-reviews { display: grid; gap: 0.75rem; }
 .cards { display: grid; gap: 0.75rem; }
 .ex-card { border: 1px solid #eee; border-radius: 10px; padding: 1rem; background: #fff; display: grid; gap: 0.5rem; }
-.ex-head { font-weight: 600; font-size: 1.05rem; }
+.ex-head { font-weight: 600; font-size: 1.05rem; color: var(--brand-700, var(--brand-600)); }
 .field { display: grid; gap: 0.25rem; }
 .field textarea { min-height: 80px; padding: 0.6rem; border: 1px solid #ddd; border-radius: 8px; resize: vertical; }
 .upload { display: inline-grid; border: 1px solid #ddd; padding: 0.5rem 0.75rem; border-radius: 8px; cursor: pointer; background: #fafafa; }
@@ -489,5 +520,5 @@ function removePhoto(exId: string, index: number) {
 
 .divider-tight { margin-top: -0.3rem; margin-bottom: 0.15rem; }
 
-.bottom-bar { display: flex; justify-content: flex-end; gap: 0.5rem; position: sticky; bottom: 0; background: white; padding: 0.75rem 0; }
+.bottom-bar { display: flex; justify-content: flex-end; gap: 0.5rem; position: sticky; bottom: 0; background: linear-gradient(180deg, rgba(255,255,255,0.75), #ffffff); padding: 0.75rem 0; border-top: 1px solid #eee; }
 </style>

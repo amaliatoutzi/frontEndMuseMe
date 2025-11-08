@@ -3,8 +3,8 @@
     :width="size"
     :height="size"
     viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
+    :fill="filled ? 'currentColor' : 'none'"
+    :stroke="filled ? 'none' : 'currentColor'"
     :stroke-width="stroke"
     stroke-linecap="round"
     stroke-linejoin="round"
@@ -87,6 +87,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 const props = defineProps<{
   name:
     | 'refresh'
@@ -106,10 +107,13 @@ const props = defineProps<{
     | 'arrow-up';
   size?: number | string;
   stroke?: number | string;
+  filled?: boolean;
 }>();
 
 const size = props.size ?? 18;
 const stroke = props.stroke ?? 2;
+// Keep 'filled' reactive to prop changes
+const filled = computed(() => props.filled ?? false);
 </script>
 
 <style scoped>

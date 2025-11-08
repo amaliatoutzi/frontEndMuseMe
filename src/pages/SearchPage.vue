@@ -246,9 +246,13 @@ async function toggleFollow() {
 .searchbar { display: flex; gap: 0.5rem; }
 .searchbar input { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #ddd; border-radius: 8px; }
 .btn { padding: 0.5rem 0.8rem; border: 1px solid #ddd; background: #fafafa; border-radius: 8px; }
+.btn.primary { background: var(--brand-600); border-color: var(--brand-600); color: #fff; }
+.btn.primary:hover { background: var(--brand-700); border-color: var(--brand-700); }
 .filter-row { display: flex; align-items: center; gap: 0.5rem; }
 .badge { width: 10px; height: 10px; border-radius: 999px; background: #111827; display: inline-block; }
 .select { padding: 0.45rem 0.6rem; border: 1px solid #e5e7eb; border-radius: 8px; background: white; }
+.select:focus { outline: none; border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(124,45,75,0.25); }
+.select option:checked { background: var(--brand-600); color: #fff; }
 .status { color: var(--muted); }
 .block { display: grid; gap: 0.5rem; }
 .block + .block { margin-top: 0.25rem; }
@@ -263,5 +267,6 @@ async function toggleFollow() {
 .modal-body-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 .group-title { margin: 0 0 0.25rem 0; font-size: 0.95rem; color: #374151; }
 .check { display: flex; align-items: center; gap: 0.4rem; }
+.check input[type="checkbox"] { accent-color: var(--brand-600); }
 .field { display: grid; gap: 0.25rem; }
 </style>

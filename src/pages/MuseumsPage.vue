@@ -273,6 +273,8 @@ function openMuseum(id: string) { selectedMuseumId.value = id; showDetails.value
 .filter-btn:hover { background: #f1f1f1; }
 .badge { background: #111; color: #fff; font-size: 0.75rem; line-height: 1; padding: 0.1rem 0.4rem; border-radius: 999px; }
 .select { padding: 0.5rem 0.75rem; border: 1px solid #ddd; border-radius: 8px; background: white; }
+.select:focus { outline: none; border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(124,45,75,0.25); }
+.select option:checked { background: var(--brand-600); color: #fff; }
 .status { color: #666; }
 .grid {
   list-style: none;
@@ -353,6 +355,7 @@ function openMuseum(id: string) { selectedMuseumId.value = id; showDetails.value
 .close { background: transparent; border: none; font-size: 1rem; cursor: pointer; }
 .close:hover { color: var(--accent-gold); }
 .ghost { background: #fafafa; border: 1px solid #ddd; border-radius: 8px; padding: 0.45rem 0.8rem; }
-.primary { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 8px; padding: 0.45rem 0.8rem; }
+.primary { background: var(--brand-600); border: 1px solid var(--brand-600); border-radius: 8px; padding: 0.45rem 0.8rem; color: #fff; }
+.primary:hover { background: var(--brand-700); border-color: var(--brand-700); }
 label.field { display: grid; gap: 0.25rem; }
 </style>
